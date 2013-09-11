@@ -28,6 +28,9 @@
         <groovy.version>1.8.5</groovy.version>
         <jackson.version>1.9.13</jackson.version>
         <jetty.version>6.1.26</jetty.version>
+        <jgit.version>3.0.0.201306101825-r</jgit.version>
+        <xmlrpc.version>3.1.3</xmlrpc.version>
+
         <apache.http.version>4.2.3</apache.http.version>
         <eclipse.persistence.version>2.3.2</eclipse.persistence.version>
         <spring.version>3.2.4.RELEASE</spring.version>
@@ -336,32 +339,65 @@
                 <version>${validation.api.version}</version>
             </dependency>
 
-            <!-- EclipseLink dependencies -->
-            <dependency>
-                <groupId>org.eclipse.persistence </groupId>
-                <artifactId>org.eclipse.persistence.core</artifactId>
-                <version>${eclipse.persistence.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.persistence </groupId>
-                <artifactId>org.eclipse.persistence.antlr</artifactId>
-                <version>${eclipse.persistence.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.persistence </groupId>
-                <artifactId>org.eclipse.persistence.asm</artifactId>
-                <version>${eclipse.persistence.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.persistence </groupId>
-                <artifactId>org.eclipse.persistence.jpa</artifactId>
-                <version>${eclipse.persistence.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.persistence </groupId>
-                <artifactId>javax.persistence</artifactId>
-                <version>2.0.0</version>
-            </dependency>
+	        <dependency>
+	            <groupId>org.eclipse.jgit</groupId>
+	            <artifactId>org.eclipse.jgit</artifactId>
+	            <version>${jgit.version}</version>
+	            <exclusions>
+	                <exclusion> <!-- don't need it - we use our own SSH -->
+	                      <groupId>com.jcraft</groupId>
+	                      <artifactId>jsch</artifactId>
+	                </exclusion>
+	                <exclusion> <!-- don't think we need it -->
+	                      <groupId>com.googlecode.javaewah</groupId>
+	                      <artifactId>JavaEWAH</artifactId>
+	                </exclusion>
+	            </exclusions>
+	        </dependency>
+	        <dependency>
+	            <groupId>org.eclipse.jgit</groupId>
+	            <artifactId>org.eclipse.jgit.http.server</artifactId>
+	            <version>${jgit.version}</version>
+	        </dependency
+>
+	        <dependency>
+	            <groupId>org.apache.xmlrpc</groupId>
+	            <artifactId>xmlrpc-common</artifactId>
+	            <version>${xmlrpc.version}</version>
+	        </dependency>
+	        <dependency>
+	            <groupId>org.apache.xmlrpc</groupId>
+	            <artifactId>xmlrpc-client</artifactId>
+	            <version>${xmlrpc.version}</version>
+	        </dependency>
+	
+	        <dependency>
+	            <groupId>org.apache.xmlrpc</groupId>
+	            <artifactId>xmlrpc-server</artifactId>
+	            <version>${xmlrpc.version}</version>
+	            <exclusions>
+	                <exclusion> <!-- we provide our own -->
+	                    <groupId>commons-logging</groupId>
+	                    <artifactId>commons-logging</artifactId>
+	                </exclusion>
+	            </exclusions>
+	        </dependency>
+	
+	        <dependency>    <!-- used by xmlrpc artifacts -->
+	            <groupId>org.apache.ws.commons.util</groupId>
+	            <artifactId>ws-commons-util</artifactId>
+	            <version>1.0.2</version>
+	            <exclusions>
+	                <exclusion>   <!-- we only use it for tests -->
+	                    <groupId>junit</groupId>
+	                    <artifactId>junit</artifactId>
+	                </exclusion>
+	                <exclusion>   <!-- provided by J2SE -->
+	                    <groupId>xml-apis</groupId>
+	                    <artifactId>xml-apis</artifactId>
+	                </exclusion>
+	            </exclusions>
+	        </dependency>
 
             <!-- Hibernate framework dependencies -->
             <dependency>
