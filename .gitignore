@@ -1,0 +1,17 @@
+.DS_Store
+target
+_ajdump
+Servers
+.metadata
+.settings
+.project
+.classpath
+.springBeans
+.externalToolBuilders
+.svn
+dependency-reduced-pom.xml
+*.iml
+*.ipr
+*.iws
+.idea/
+hs_err*

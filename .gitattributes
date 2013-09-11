@@ -1,0 +1,9 @@
+*       text=auto
+*.sh    eol=lf
+*.pl    eol=lf
+*.awk   eol=lf
+*.py    eol=lf
+*.bat   eol=crlf
+*.vbs	eol=crlf
+*.jpg   -text
+*.pdf   -text
