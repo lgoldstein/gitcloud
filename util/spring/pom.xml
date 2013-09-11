@@ -18,6 +18,7 @@
 	<!-- Sub-modules (in preferred compilation order) -->
 	<modules>
 		<module>extended-core</module>
+		<module>jdbc-extensions</module>
 	</modules>
 	
 	<dependencies>

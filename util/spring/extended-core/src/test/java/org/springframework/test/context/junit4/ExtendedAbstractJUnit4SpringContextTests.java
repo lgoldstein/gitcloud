@@ -35,8 +35,9 @@ import org.springframework.test.context.support.DirtiesContextTestExecutionListe
 @RunWith(SpringJUnit4ClassRunner.class)
 @TestExecutionListeners({ DependencyInjectionTestExecutionListener.class, DirtiesContextTestExecutionListener.class })
 public abstract class ExtendedAbstractJUnit4SpringContextTests
-        extends AbstractSpringTestSupport
-        implements ApplicationContextAware {
+                extends AbstractSpringTestSupport
+                implements ApplicationContextAware {
+
     protected ExtendedAbstractJUnit4SpringContextTests() {
         super();
     }
