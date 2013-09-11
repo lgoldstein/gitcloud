@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Implementation-Vendor: Community Chest
+Implementation-Title: extended-commons-test
+Built-By: Lyor G.
+ManifestUtilsTest: true
