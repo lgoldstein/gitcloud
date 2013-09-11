@@ -17,5 +17,6 @@
 		<module>parent</module>
 		<module>util</module>
 		<module>core</module>
+		<module>facades</module>
 	</modules>
 </project>

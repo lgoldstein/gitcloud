@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="2.5" xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
+
+    <display-name>Gitcloud back-end</display-name>
+    <description>Passively serves requests from the front-end(s)</description>
+        <!-- MUST BE FIRST: extracts configuration files (if not already extracted)
+            and initializes some project related system properties 
+         -->
+    <listener>
+        <listener-class>net.community.chest.gitcloud.facade.backend.EnvironmentInitializer</listener-class>
+    </listener>
+
+    <context-param>
+        <param-name>contextInitializerClasses</param-name>
+        <param-value>net.community.chest.gitcloud.facade.backend.FacadeContextInitializer</param-value>
+    </context-param>
+
+    <context-param>
+        <param-name>log4jConfigLocation</param-name>
+        <param-value>file:${gitcloud.base}${file.separator}conf${file.separator}log4j.xml</param-value>
+    </context-param>
+    <listener>
+        <listener-class>org.springframework.web.util.Log4jConfigListener</listener-class>
+    </listener>
+
+    <context-param>
+        <param-name>contextConfigLocation</param-name>
+        <param-value>classpath:/META-INF/spring/applicationContext.xml</param-value>
+    </context-param>
+    <listener>
+        <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+    </listener>
+
+        <!-- Enables use of HTTP methods PUT and DELETE -->
+    <filter>
+        <filter-name>httpMethodFilter</filter-name>
+        <filter-class>org.springframework.web.filter.HiddenHttpMethodFilter</filter-class>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>httpMethodFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+    
+</web-app>

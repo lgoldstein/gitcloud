@@ -1708,9 +1708,9 @@
     </profiles>
 
     <!-- scm>
-        <connection>scm:git:ssh://git@git.springsource.com:devenv/devenv.git</connection>
-        <url>scm:git:ssh://git@git.springsource.com:devenv/devenv.git</url>
-        <developerConnection>scm:git:ssh://git@git.springsource.com:devenv/devenv.git</developerConnection>
+        <connection>scm:git:ssh://git@git.springsource.com:gitcloud/gitcloud.git</connection>
+        <url>scm:git:ssh://git@git.springsource.com:gitcloud/gitcloud.git</url>
+        <developerConnection>scm:git:ssh://git@git.springsource.com:gitcloud/gitcloud.git</developerConnection>
     </scm -->
 
     <pluginRepositories>
