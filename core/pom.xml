@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>net.community.chest.gitcloud</groupId>
+	<artifactId>core</artifactId>
+	<packaging>pom</packaging>
+	<name>net.community.chest.gitcloud:core</name>
+	
+	<parent>
+		<groupId>net.community.chest</groupId>
+		<artifactId>parent</artifactId>
+		<version>1.0.0-CI-SNAPSHOT</version>
+		<relativePath>../parent</relativePath>
+	</parent>
+
+	<!-- Sub-modules (in preferred compilation order) -->
+	<modules>
+	</modules>
+	
+	<dependencies>
+        <dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-extensions</artifactId>
+			<version>${project.version}</version>
+        </dependency>
+		
+        <dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>core-extensions</artifactId>
+			<version>${project.version}</version>
+        </dependency>
+
+			<!-- test dependencies -->
+        <dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-extensions</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>core-extensions</artifactId>
+			<version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+	</dependencies>
+</project>

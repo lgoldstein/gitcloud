@@ -19,4 +19,45 @@
 	<modules>
 		<module>extended-core</module>
 	</modules>
+	
+	<dependencies>
+        <dependency> <!-- used by Spring -->
+            <groupId>javax.inject</groupId>
+            <artifactId>javax.inject</artifactId>
+        </dependency>
+	
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-beans</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+
+        <dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-extensions</artifactId>
+			<version>${project.version}</version>
+        </dependency>
+		
+			<!-- test dependencies -->
+        <dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-extensions</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+	</dependencies>
 </project>
