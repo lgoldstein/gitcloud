@@ -24,4 +24,8 @@
       />
 
     <context:annotation-config />
+    
+        <!-- need to do it here since the back-end servlet cannot be wrapped inside a
+             dispatcher servlet that can inject the values we need -->
+    <context:component-scan base-package="net.community.chest.gitcloud.facade.backend.git" />
 </beans>

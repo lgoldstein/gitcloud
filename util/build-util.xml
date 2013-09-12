@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="util" default="util-base">
+    <dirname property="module.root.folder" file="${ant.file}" />
+    <property name="util.root.folder" value="${module.root.folder}" />
+    <dirname property="gitcloud.root.folder" file="${util.root.folder}" />
+    <property name="gitcloud.parent.folder" value="${gitcloud.root.folder}${file.separator}parent" />
+    <import file="${gitcloud.parent.folder}${file.separator}build-gitcloud.xml" />
+
+	<target name="util-base" depends="gitcloud-base" />
+</project>

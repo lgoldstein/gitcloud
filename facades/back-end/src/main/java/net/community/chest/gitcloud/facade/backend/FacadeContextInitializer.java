@@ -15,9 +15,14 @@
 package net.community.chest.gitcloud.facade.backend;
 
 import java.io.File;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.io.ExtendedFileUtils;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.MutablePropertySources;
 import org.springframework.util.ExtendedPlaceholderResolver;
+import org.springframework.util.ExtendedPlaceholderResolverUtils;
 
 import net.community.chest.gitcloud.facade.AbstractContextInitializer;
 import net.community.chest.gitcloud.facade.ConfigUtils;
@@ -28,8 +33,25 @@ import net.community.chest.gitcloud.facade.ConfigUtils;
  * @author Lyor G.
  */
 public class FacadeContextInitializer extends AbstractContextInitializer {
+    private static final AtomicReference<ExtendedPlaceholderResolver>   propsHolder=
+            new AtomicReference<ExtendedPlaceholderResolver>(null);
+    public static final ExtendedPlaceholderResolver getContextProperties() {
+        return propsHolder.get();
+    }
+
     public FacadeContextInitializer() {
         super();
+    }
+
+    @Override
+    public void initialize(ConfigurableApplicationContext applicationContext) {
+        super.initialize(applicationContext);
+
+        ConfigurableEnvironment     environment=applicationContext.getEnvironment();
+        MutablePropertySources      propSources=environment.getPropertySources();
+        if (propsHolder.getAndSet(ExtendedPlaceholderResolverUtils.toPlaceholderResolver(propSources)) != null) {
+            throw new IllegalStateException("Multiple context initializations");
+        }
     }
 
     @Override

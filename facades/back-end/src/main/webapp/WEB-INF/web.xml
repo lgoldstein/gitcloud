@@ -33,6 +33,15 @@
         <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
     </listener>
 
+    <servlet>
+        <servlet-name>GitBackendServlet</servlet-name>
+        <servlet-class>net.community.chest.gitcloud.facade.backend.git.GitBackendServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>GitBackendServlet</servlet-name>     
+        <url-pattern>/git/*</url-pattern>
+    </servlet-mapping>
+
         <!-- Enables use of HTTP methods PUT and DELETE -->
     <filter>
         <filter-name>httpMethodFilter</filter-name>
