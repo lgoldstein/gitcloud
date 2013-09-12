@@ -77,7 +77,7 @@ public class FacadeEnvironmentInitializer implements ServletContextListener {
         }
 
         // TODO use some automatic detection mechanism for "META-INF/conf"
-        extractConfigFiles(new File(rootDir, ConfigUtils.CONF_DIR_NAME), PROPS_FILE_NAME, "log4j.xml");
+        extractConfigFiles(new File(rootDir, ConfigUtils.CONF_DIR_NAME), PROPS_FILE_NAME, "gitcloud-backend-log4j.xml");
     }
 
     void extractConfigFiles(File confDir, String ... names) {

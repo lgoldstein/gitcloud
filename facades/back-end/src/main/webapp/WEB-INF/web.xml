@@ -19,7 +19,7 @@
 
     <context-param>
         <param-name>log4jConfigLocation</param-name>
-        <param-value>file:${gitcloud.base}${file.separator}conf${file.separator}log4j.xml</param-value>
+        <param-value>file:${gitcloud.base}${file.separator}conf${file.separator}gitcloud-backend-log4j.xml</param-value>
     </context-param>
     <listener>
         <listener-class>org.springframework.web.util.Log4jConfigListener</listener-class>
