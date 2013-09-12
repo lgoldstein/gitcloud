@@ -18,10 +18,11 @@
            http://www.springframework.org/schema/util/spring-util.xsd">
 
         <!-- TODO name must match the EnvironmentInitializer#PROPS_FILE_NAME -->
-    <util:constant id="gitcloud.props.file" static-field="net.community.chest.gitcloud.facade.backend.EnvironmentInitializer.PROPS_FILE_NAME"/>
-
+    <!--  util:constant id="gitcloud.props.file" static-field="net.community.chest.gitcloud.facade.backend.FacadeEnvironmentInitializerPROPS_FILE_NAME"/ -->
+    <!-- consider using #{ T(net.community.chest.gitcloud.facade.backend.FacadeEnvironmentInitializer).PROPS_FILE_NAME } -->
     <context:property-placeholder   location="file:${gitcloud.base}${file.separator}conf${file.separator}gitcloud-backend.properties"
                                     system-properties-mode="ENVIRONMENT"
                                     ignore-unresolvable="true" />
+
     <context:annotation-config />
 </beans>

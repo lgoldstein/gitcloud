@@ -42,12 +42,12 @@ import org.springframework.util.PropertyPlaceholderHelper.PlaceholderResolver;
 /**
  * @author Lyor G.
  */
-public class EnvironmentInitializer implements ServletContextListener {
+public class FacadeEnvironmentInitializer implements ServletContextListener {
     public static final String  PROPS_FILE_NAME="gitcloud-backend.properties";
 
     private volatile Log    logger;
 
-    public EnvironmentInitializer() {
+    public FacadeEnvironmentInitializer() {
         logger = ExtendedLogUtils.wrapJULLoggger(Logger.getLogger(getClass().getName()));
     }
 

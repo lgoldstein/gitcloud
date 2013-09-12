@@ -120,7 +120,7 @@ public class FacadeContextInitializer
         final Properties    props=new Properties(); 
         InputStream propsStream=new BufferedInputStream(
                 new FileInputStream(
-                        new File(new File(nimbusBase, ConfigUtils.CONF_DIR_NAME), EnvironmentInitializer.PROPS_FILE_NAME)));
+                        new File(new File(nimbusBase, ConfigUtils.CONF_DIR_NAME), FacadeEnvironmentInitializer.PROPS_FILE_NAME)));
         try {
             props.load(propsStream);
         } finally {

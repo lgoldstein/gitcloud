@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="facades" default="facades-base">
+    <dirname property="module.root.folder" file="${ant.file}" />
+    <property name="facades.root.folder" value="${module.root.folder}" />
+    <dirname property="gitcloud.root.folder" file="${facades.root.folder}" />
+    <property name="gitcloud.parent.folder" value="${gitcloud.root.folder}${file.separator}parent" />
+    <import file="${gitcloud.parent.folder}${file.separator}build-gitcloud.xml" />
+
+	<target name="facades-base" depends="gitcloud-base" />
+</project>
