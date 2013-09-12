@@ -31,7 +31,7 @@
         <jgit.version>3.0.0.201306101825-r</jgit.version>
         <xmlrpc.version>3.1.3</xmlrpc.version>
 
-        <apache.http.version>4.2.3</apache.http.version>
+        <apache.http.version>4.3</apache.http.version>
         <eclipse.persistence.version>2.3.2</eclipse.persistence.version>
         <spring.version>3.2.4.RELEASE</spring.version>
         <spring.integration.version>2.2.4.RELEASE</spring.integration.version>
