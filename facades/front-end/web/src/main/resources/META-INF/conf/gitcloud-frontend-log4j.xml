@@ -5,7 +5,7 @@
 
     <!-- Appenders -->
     <appender name="FILE" class="org.apache.log4j.RollingFileAppender">
-        <param name="File" value="${catalina.base}/logs/gitcloud-backend.log" />
+        <param name="File" value="${catalina.base}/logs/gitcloud-frontend.log" />
         <param name="Append" value="false" />
         <param name="MaxFileSize" value="3MB"/>
         <param name="MaxBackupIndex" value="5"/>

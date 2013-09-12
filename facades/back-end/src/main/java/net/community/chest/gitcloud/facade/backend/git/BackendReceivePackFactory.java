@@ -67,6 +67,10 @@ public class BackendReceivePackFactory<C> extends PackFactory<C> implements Rece
     @Override
     public ReceivePack create(C req, Repository db)
             throws ServiceNotEnabledException, ServiceNotAuthorizedException {
+        if (logger.isDebugEnabled()) {
+            logger.debug("ReceivePack(" + db.getDirectory() + ")");
+        }
+
         ReceivePack receive=new ReceivePack(db);
         receive.setTimeout(receiveTimeoutValue);
         

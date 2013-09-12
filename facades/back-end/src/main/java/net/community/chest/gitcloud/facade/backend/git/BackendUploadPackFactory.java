@@ -67,6 +67,10 @@ public class BackendUploadPackFactory<C> extends PackFactory<C> implements Uploa
     @Override
     public UploadPack create(C req, Repository db)
             throws ServiceNotEnabledException, ServiceNotAuthorizedException {
+        if (logger.isDebugEnabled()) {
+            logger.debug("UploadPack(" + db.getDirectory() + ")");
+        }
+
         UploadPack up = new UploadPack(db);
         up.setTimeout(uploadTimeoutValue);
         return up;
