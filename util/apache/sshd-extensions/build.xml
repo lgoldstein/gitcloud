@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="sshd-extensions" default="install">
+    <dirname property="module.root.folder" file="${ant.file}" />
+    <dirname property="apache.util.root.folder" file="${module.root.folder}" />
+    <property name="module.artifact.name" value="${ant.project.name}" />
+    <import file="${apache.util.root.folder}${file.separator}build-apache.xml" />
+
+    <target name="install" depends="compile"
+            description="Compiles (including all the tests) and deploys the required artifacts" />
+    <target name="clean" depends="uncompile"
+            description="Removes the artifact" />
+    <target name="re-install" depends="clean,install"
+            description="Re-creates and deploys the artifact" />
+</project>
