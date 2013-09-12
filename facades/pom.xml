@@ -20,10 +20,35 @@
 	</modules>
 	
 	<dependencies>
+        <dependency>
+            <groupId>javax.validation</groupId>
+            <artifactId>validation-api</artifactId>
+        </dependency>
+
+		<dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+        </dependency>
+
+		<dependency>
+			<groupId>org.eclipse.jgit</groupId>
+			<artifactId>org.eclipse.jgit.http.server</artifactId>
+        </dependency>
+
 		<dependency>
 			<groupId>org.eclipse.jgit</groupId>
 			<artifactId>org.eclipse.jgit</artifactId>
         </dependency>
+		
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-oxm</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webmvc</artifactId>
+		</dependency>
 
         <dependency>
 			<groupId>org.apache.commons</groupId>
@@ -60,4 +85,50 @@
             <scope>test</scope>
         </dependency>
 	</dependencies>
+	
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-war-plugin</artifactId>
+					<configuration>
+						<webResources>
+							<resource>
+								<directory>${settings.localRepository}/org/slf4j/slf4j-log4j12/${slf4j.version}</directory>
+								<includes>
+									<include>slf4j-log4j12-${slf4j.version}.jar</include>
+								</includes>
+								<targetPath>WEB-INF/lib</targetPath>
+							</resource>
+							<resource>
+								<directory>${settings.localRepository}/log4j/log4j/${log4j.version}</directory>
+								<includes>
+									<include>log4j-${log4j.version}.jar</include>
+								</includes>
+								<targetPath>WEB-INF/lib</targetPath>
+							</resource>
+						</webResources>
+					</configuration>
+						<!-- define these dependencies here in order to ensure
+							that they will be downloaded if necessary, but not included
+							in the project's classpath
+						 -->
+					<dependencies>
+						<dependency>
+							<groupId>org.slf4j</groupId>
+							<artifactId>slf4j-log4j12</artifactId>
+							<version>${slf4j.version}</version>
+						</dependency>
+
+						<dependency>
+							<groupId>log4j</groupId>
+							<artifactId>log4j</artifactId>
+							<version>${log4j.version}</version>
+						</dependency>
+					</dependencies>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+	</build>
 </project>
