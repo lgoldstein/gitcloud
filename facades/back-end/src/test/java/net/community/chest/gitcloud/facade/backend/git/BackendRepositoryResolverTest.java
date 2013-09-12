@@ -15,6 +15,9 @@
 package net.community.chest.gitcloud.facade.backend.git;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -35,6 +38,8 @@ import org.springframework.test.AbstractSpringTestSupport;
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class BackendRepositoryResolverTest extends AbstractSpringTestSupport {
+    private static final List<String> TEST_EXTS=Collections.unmodifiableList(Arrays.asList("", Constants.DOT_GIT_EXT ));
+
     private final File  baseDir, reposDir;
     private final BackendRepositoryResolver<Void>   resolver;
 
@@ -75,7 +80,7 @@ public class BackendRepositoryResolverTest extends AbstractSpringTestSupport {
             assertTrue("Test repo not a folder: " + expected, expected.isDirectory());
         }
         
-        for (String ext : new String[] { "", Constants.DOT_GIT_EXT }) {
+        for (String ext : TEST_EXTS) {
             Repository  repo=resolver.open(null, REPO_NAME + ext);
             assertNotNull("No resolution result for ext=" + ext, repo);
 
@@ -95,7 +100,7 @@ public class BackendRepositoryResolverTest extends AbstractSpringTestSupport {
         FileUtils.deleteDirectory(gitDir);
         assertFalse("Failed to delete " + gitDir, gitDir.exists());
         
-        for (String ext : new String[] { "", Constants.DOT_GIT_EXT }) {
+        for (String ext : TEST_EXTS) {
             try {
                 Repository repo=resolver.open(null, REPO_NAME + ext);
                 try {
@@ -105,6 +110,55 @@ public class BackendRepositoryResolverTest extends AbstractSpringTestSupport {
                 }
             } catch(RepositoryNotFoundException e) {
                 // expected - ignored
+            }
+        }
+    }
+    
+    @Test
+    public void testDeepDownRepositoryResolution() throws Exception {
+        final String    REPO_NAME="testDeepDownRepositoryResolution", GIT_NAME=REPO_NAME + Constants.DOT_GIT_EXT;
+        final int       MAX_DEPTH=Byte.SIZE;
+        StringBuilder   sb=new StringBuilder(MAX_DEPTH + Long.SIZE);
+        File            parentDir=reposDir;
+        for (int depth=0; depth < MAX_DEPTH; depth++) {
+            String  subName=String.valueOf(depth);
+            parentDir = new File(parentDir, subName);
+            sb.append(subName).append('/');
+
+            File    gitDir=new File(parentDir, GIT_NAME);
+            if (!gitDir.exists()) {
+                Repository      repo=new FileRepository(gitDir);
+                try {
+                    repo.create(true);
+                } finally {
+                    repo.close();
+                }
+            } else {
+                assertTrue("Child repo not a folder: " + gitDir, gitDir.isDirectory());
+            }
+
+            int curLen=sb.length();
+            try {
+                sb.append(REPO_NAME);
+                
+                int baseLen=sb.length();
+                for (String ext : TEST_EXTS) {
+                    try {
+                        Repository  repo=resolver.open(null, sb.append(ext).toString());
+                        assertNotNull("No resolution result for ext=" + ext, repo);
+        
+                        try {
+                            File    actual=repo.getDirectory();
+                            assertEquals("Mismatched resolved location for ext=" + ext, gitDir, actual);
+                        } finally {
+                            repo.close();
+                        }
+                    } finally {
+                        sb.setLength(baseLen);
+                    }
+                }
+            } finally {
+                sb.setLength(curLen);
             }
         }
     }
