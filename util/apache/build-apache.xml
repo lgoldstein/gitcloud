@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="apache-util" default="apache-util-base">
+    <dirname property="module.root.folder" file="${ant.file}" />
+    <property name="apache.util.root.folder" value="${module.root.folder}" />
+    <dirname property="util.root.folder" file="${apache.util.root.folder}" />
+    <import file="${util.root.folder}${file.separator}build-util.xml" />
+
+    <target name="apache-util-base" depends="util-base" />
+</project>

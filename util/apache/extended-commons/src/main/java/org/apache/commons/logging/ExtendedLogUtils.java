@@ -28,7 +28,9 @@ import org.apache.commons.collections15.ExtendedPredicate;
 import org.apache.commons.collections15.Predicate;
 import org.apache.commons.collections15.PredicateUtils;
 import org.apache.commons.collections15.Transformer;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ExtendedCharSequenceUtils;
+import org.apache.commons.lang3.Validate;
 
 /**
  * @author Lyor G.
@@ -45,7 +47,7 @@ public final class ExtendedLogUtils {
      * @param values The {@link Collection} of values to log - ignored if <code>null</code>/empty
      * @see #logAll(Log, Level, String, Transformer, Collection)
      */
-    public static void logAll(Log logger, Level level, String prefix, Collection<?> values) {
+    public static final  void logAll(Log logger, Level level, String prefix, Collection<?> values) {
         logAll(logger, level, prefix, null, values);
     }
     
@@ -59,7 +61,7 @@ public final class ExtendedLogUtils {
      * @param values The {@link Collection} of values to log - ignored if <code>null</code>/empty
      * @see #isLoggable(Log, Level)
      */
-    public static <SRC> void logAll(Log logger, Level level, String prefix, Transformer<? super SRC,?> xformer, Collection<? extends SRC> values) {
+    public static final  <SRC> void logAll(Log logger, Level level, String prefix, Transformer<? super SRC,?> xformer, Collection<? extends SRC> values) {
         if ((logger == null) || (level == null) || (!isLoggable(logger, level)) || ExtendedCollectionUtils.isEmpty(values)) {
             return;
         }
@@ -160,12 +162,30 @@ public final class ExtendedLogUtils {
         };
 
     /**
+     * @param logger The {@link Log}-ger instance to be used
+     * @param level The log {@link Level} to be used
+     * @param msg The message to be issued
+     * @param thrown The {@link Throwable} information to attach
+     * @return Same as input thrown information 
+     */
+    public static final <T extends Throwable> T thrownLogging(Log logger, Level level, String msg, T thrown) {
+        if (!isLoggable(logger, level)) {
+            return thrown;
+        }
+
+        Closure<String> c=loggingClosure(logger, level, thrown);
+        c.execute(msg);
+        return thrown;
+    }
+
+    /**
      * @param logger The {@link Log}-ger to be evaluated
      * @param level The log {@link Level} to be evaluated
      * @return <code>true</code> if this logger is enabled for the specified level
      * @see #loggablePredicate(Level)
      */
-    public static boolean isLoggable(Log logger, Level level) {
+    public static final  boolean isLoggable(Log logger, Level level) {
+        Validate.notNull(logger, "No logger provided", ArrayUtils.EMPTY_OBJECT_ARRAY);
         Predicate<Log> predicate=loggablePredicate(level);
         return predicate.evaluate(logger);
     }
@@ -183,10 +203,8 @@ public final class ExtendedLogUtils {
      *      <LI>All others - {@link #TRACE_ENABLED}</LI>
      * </UL>
      */
-    public static Predicate<Log> loggablePredicate(Level level) {
-        if (level == null) {
-            throw new IllegalArgumentException("No level provided");
-        }
+    public static final  Predicate<Log> loggablePredicate(Level level) {
+        Validate.notNull(level, "No level provided", ArrayUtils.EMPTY_OBJECT_ARRAY);
         
         if (Level.OFF.equals(level)) {
             return PredicateUtils.falsePredicate();
@@ -202,6 +220,7 @@ public final class ExtendedLogUtils {
             return TRACE_ENABLED;
         }
     }
+
     /**
      * @param logger The {@link Log}-ger instance to use
      * @param level The log {@link Level} mapped as follows:</BR>
@@ -217,23 +236,25 @@ public final class ExtendedLogUtils {
      * the {@link String#valueOf(Object)} value of its argument if
      * the specific level is enabled
      */
-    public static <T> Closure<T> loggingClosure(Log logger, Level level) {
-        if (level == null) {
-            throw new IllegalArgumentException("No level provided");
-        }
+    public static final  <T> Closure<T> loggingClosure(Log logger, Level level) {
+        return loggingClosure(logger, level, null);
+    }
+
+    public static final  <T> Closure<T> loggingClosure(Log logger, Level level, Throwable t) {
+        Validate.notNull(level, "No level provided", ArrayUtils.EMPTY_OBJECT_ARRAY);
         
         if (Level.OFF.equals(level)) {
             return nologClosure(logger);
         } if (Level.SEVERE.equals(level)) {
-            return errorClosure(logger);
+            return errorClosure(logger, t);
         } else if (Level.WARNING.equals(level)) {
-            return warnClosure(logger);
+            return warnClosure(logger, t);
         } else if (Level.INFO.equals(level) || Level.ALL.equals(level)) {
-            return infoClosure(logger);
+            return infoClosure(logger, t);
         } else if (Level.CONFIG.equals(level) || Level.FINE.equals(level)) {
-            return debugClosure(logger);
+            return debugClosure(logger, t);
         } else {
-            return traceClosure(logger);
+            return traceClosure(logger, t);
         }
     }
 
@@ -244,27 +265,38 @@ public final class ExtendedLogUtils {
      */
     @SuppressWarnings("unchecked")
     public static final <T> Closure<T> nologClosure(final Log logger) {
-        if (logger == null) {
-            throw new IllegalArgumentException("No logger provided");
-        }
-
+        Validate.notNull(logger, "No logger provided", ArrayUtils.EMPTY_OBJECT_ARRAY);
         return ClosureUtils.nopClosure();
     }
+
     /**
      * @param logger The {@link Log}-ger instance to use
      * @return A closure whose {@link Closure#execute(Object)} method logs
      * the {@link String#valueOf(Object)} value of its argument if {@link Log#isErrorEnabled()}
      */
     public static final <T> Closure<T> errorClosure(final Log logger) {
-        if (logger == null) {
-            throw new IllegalArgumentException("No logger provided");
-        }
-        
+        return errorClosure(logger, null);
+    }
+
+    /**
+     * @param logger The {@link Log}-ger instance to use
+     * @param thrown A {@link Throwable} to attach to the message - ignored
+     * if {@code null}
+     * @return A closure whose {@link Closure#execute(Object)} method logs
+     * the {@link String#valueOf(Object)} value of its argument if {@link Log#isErrorEnabled()}
+     */
+    public static final <T> Closure<T> errorClosure(final Log logger, final Throwable thrown) {
+        Validate.notNull(logger, "No logger provided", ArrayUtils.EMPTY_OBJECT_ARRAY);
         return new Closure<T>() {
             @Override
             public void execute(T input) {
                 if (logger.isErrorEnabled()) {
-                    logger.error(String.valueOf(input));
+                    String  msg=String.valueOf(input);
+                    if (thrown == null) {
+                        logger.error(msg);
+                    } else {
+                        logger.error(msg, thrown);
+                    }
                 }
             }
         };
@@ -276,15 +308,28 @@ public final class ExtendedLogUtils {
      * the {@link String#valueOf(Object)} value of its argument if {@link Log#isWarnEnabled()}
      */
     public static final <T> Closure<T> warnClosure(final Log logger) {
-        if (logger == null) {
-            throw new IllegalArgumentException("No logger provided");
-        }
-        
+        return warnClosure(logger, null);
+    }
+
+    /**
+     * @param logger The {@link Log}-ger instance to use
+     * @param thrown A {@link Throwable} to attach to the message - ignored
+     * if {@code null}
+     * @return A closure whose {@link Closure#execute(Object)} method logs
+     * the {@link String#valueOf(Object)} value of its argument if {@link Log#isWarnEnabled()}
+     */
+    public static final <T> Closure<T> warnClosure(final Log logger, final Throwable thrown) {
+        Validate.notNull(logger, "No logger provided", ArrayUtils.EMPTY_OBJECT_ARRAY);
         return new Closure<T>() {
             @Override
             public void execute(T input) {
                 if (logger.isWarnEnabled()) {
-                    logger.warn(String.valueOf(input));
+                    String  msg=String.valueOf(input);
+                    if (thrown == null) {
+                        logger.warn(msg);
+                    } else {
+                        logger.warn(msg, thrown);
+                    }
                 }
             }
         };
@@ -296,15 +341,28 @@ public final class ExtendedLogUtils {
      * the {@link String#valueOf(Object)} value of its argument if {@link Log#isInfoEnabled()}
      */
     public static final <T> Closure<T> infoClosure(final Log logger) {
-        if (logger == null) {
-            throw new IllegalArgumentException("No logger provided");
-        }
-        
+        return infoClosure(logger, null);
+    }
+
+    /**
+     * @param logger The {@link Log}-ger instance to use
+     * @param thrown A {@link Throwable} to attach to the message - ignored
+     * if {@code null}
+     * @return A closure whose {@link Closure#execute(Object)} method logs
+     * the {@link String#valueOf(Object)} value of its argument if {@link Log#isInfoEnabled()}
+     */
+    public static final <T> Closure<T> infoClosure(final Log logger, final Throwable thrown) {
+        Validate.notNull(logger, "No logger provided", ArrayUtils.EMPTY_OBJECT_ARRAY);
         return new Closure<T>() {
             @Override
             public void execute(T input) {
                 if (logger.isInfoEnabled()) {
-                    logger.info(String.valueOf(input));
+                    String  msg=String.valueOf(input);
+                    if (thrown == null) {
+                        logger.info(msg);
+                    } else {
+                        logger.info(msg, thrown);
+                    }
                 }
             }
         };
@@ -316,15 +374,28 @@ public final class ExtendedLogUtils {
      * the {@link String#valueOf(Object)} value of its argument if {@link Log#isDebugEnabled()}
      */
     public static final <T> Closure<T> debugClosure(final Log logger) {
-        if (logger == null) {
-            throw new IllegalArgumentException("No logger provided");
-        }
-        
+        return debugClosure(logger, null);
+    }
+
+    /**
+     * @param logger The {@link Log}-ger instance to use
+     * @param thrown A {@link Throwable} to attach to the message - ignored
+     * if {@code null}
+     * @return A closure whose {@link Closure#execute(Object)} method logs
+     * the {@link String#valueOf(Object)} value of its argument if {@link Log#isDebugEnabled()}
+     */
+    public static final <T> Closure<T> debugClosure(final Log logger, final Throwable thrown) {
+        Validate.notNull(logger, "No logger provided", ArrayUtils.EMPTY_OBJECT_ARRAY);
         return new Closure<T>() {
             @Override
             public void execute(T input) {
                 if (logger.isDebugEnabled()) {
-                    logger.debug(String.valueOf(input));
+                    String  msg=String.valueOf(input);
+                    if (thrown == null) {
+                        logger.debug(msg);
+                    } else {
+                        logger.debug(msg, thrown);
+                    }
                 }
             }
         };
@@ -336,20 +407,34 @@ public final class ExtendedLogUtils {
      * the {@link String#valueOf(Object)} value of its argument if {@link Log#isTraceEnabled()}
      */
     public static final <T> Closure<T> traceClosure(final Log logger) {
-        if (logger == null) {
-            throw new IllegalArgumentException("No logger provided");
-        }
+        return traceClosure(logger, null);
+    }
+
+    /**
+     * @param logger The {@link Log}-ger instance to use
+     * @param thrown A {@link Throwable} to attach to the message - ignored
+     * if {@code null}
+     * @return A closure whose {@link Closure#execute(Object)} method logs
+     * the {@link String#valueOf(Object)} value of its argument if {@link Log#isTraceEnabled()}
+     */
+    public static final <T> Closure<T> traceClosure(final Log logger, final Throwable thrown) {
+        Validate.notNull(logger, "No logger provided", ArrayUtils.EMPTY_OBJECT_ARRAY);
         
         return new Closure<T>() {
             @Override
             public void execute(T input) {
                 if (logger.isTraceEnabled()) {
-                    logger.trace(String.valueOf(input));
+                    String  msg=String.valueOf(input);
+                    if (thrown == null) {
+                        logger.trace(msg);
+                    } else {
+                        logger.trace(msg, thrown);
+                    }
                 }
             }
         };
     }
-    
+
     /**
      * Provides a wrapper around a J-U-L logger 
      * @param logger The {@link Logger} instance
