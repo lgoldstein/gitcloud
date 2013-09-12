@@ -22,6 +22,8 @@ import javax.inject.Inject;
 import net.community.chest.gitcloud.facade.git.AbstractRepositoryResolver;
 
 import org.apache.commons.io.ExtendedFileUtils;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.Validate;
 import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.ServiceMayNotContinueException;
@@ -41,8 +43,11 @@ import org.springframework.util.SystemPropertyUtils;
 @Component
 public class BackendRepositoryResolver<C> extends AbstractRepositoryResolver<C> {
     public static final String  REPOS_BASE_PROP="gitcloud.backend.repos.dir";
-    private static final String REPOS_BASE_INJECTION_VALUE=
-            SystemPropertyUtils.PLACEHOLDER_PREFIX + REPOS_BASE_PROP + SystemPropertyUtils.PLACEHOLDER_SUFFIX;
+    private static final String REPOS_BASE_INJECTION_VALUE=SystemPropertyUtils.PLACEHOLDER_PREFIX
+                                        + REPOS_BASE_PROP
+                                        + SystemPropertyUtils.VALUE_SEPARATOR
+                                        + ""    // just to make a point...
+                                        + SystemPropertyUtils.PLACEHOLDER_SUFFIX;
 
     // we need this subterfuge since the GitBackendServlet has no injection capabilities
     private static final AtomicReference<RepositoryResolver<?>> holder=new AtomicReference<RepositoryResolver<?>>(null);
@@ -60,7 +65,11 @@ public class BackendRepositoryResolver<C> extends AbstractRepositoryResolver<C> 
     private final FileResolver<C>  resolver;
 
     @Inject
-    public BackendRepositoryResolver(@Value(REPOS_BASE_INJECTION_VALUE) File baseDir) {
+    public BackendRepositoryResolver(@Value(REPOS_BASE_INJECTION_VALUE) String baseDir) {
+        this(new File(Validate.notEmpty(baseDir, "No base folder", ArrayUtils.EMPTY_OBJECT_ARRAY)));
+    }
+
+    public BackendRepositoryResolver(File baseDir) {
         Assert.notNull(baseDir, "No base folder");
         if (baseDir.exists()) {
             Assert.state(baseDir.isDirectory(), "Non-folder root: " + baseDir);

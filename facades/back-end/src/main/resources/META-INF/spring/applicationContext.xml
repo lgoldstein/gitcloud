@@ -17,10 +17,11 @@
            http://www.springframework.org/schema/util
            http://www.springframework.org/schema/util/spring-util.xsd">
 
+        <!-- Note: name must match: net.community.chest.gitcloud.facade.backend.FacadeEnvironmentInitializer#PROPS_FILE_NAME -->
     <context:property-placeholder
-        location="file:${gitcloud.base}${file.separator}conf${file.separator}#{ T(net.community.chest.gitcloud.facade.backend.FacadeEnvironmentInitializer).PROPS_FILE_NAME }"
+        location="file:${gitcloud.base}${file.separator}conf${file.separator}gitcloud-backend.properties"
         system-properties-mode="ENVIRONMENT"
-        ignore-unresolvable="true"
+        ignore-unresolvable="false"
       />
 
     <context:annotation-config />
