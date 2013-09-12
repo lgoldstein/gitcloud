@@ -15,117 +15,29 @@
 package net.community.chest.gitcloud.facade.backend;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StreamCorruptedException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 
-import javax.servlet.ServletContext;
-import javax.servlet.ServletContextEvent;
-import javax.servlet.ServletContextListener;
-
+import net.community.chest.gitcloud.facade.AbstractEnvironmentInitializer;
 import net.community.chest.gitcloud.facade.ConfigUtils;
-import net.community.chest.gitcloud.facade.ServletUtils;
 
-import org.apache.commons.io.ExtendedFileUtils;
-import org.apache.commons.io.ExtendedIOUtils;
-import org.apache.commons.lang3.ExtendedClassUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.logging.ExtendedLogUtils;
-import org.apache.commons.logging.Log;
-import org.springframework.util.AggregatedExtendedPlaceholderResolver;
-import org.springframework.util.ExtendedPlaceholderResolverUtils;
-import org.springframework.util.PropertyPlaceholderHelper.PlaceholderResolver;
 
 /**
  * @author Lyor G.
  */
-public class FacadeEnvironmentInitializer implements ServletContextListener {
+public class FacadeEnvironmentInitializer extends AbstractEnvironmentInitializer {
     public static final String  PROPS_FILE_NAME="gitcloud-backend.properties";
 
-    private volatile Log    logger;
-
     public FacadeEnvironmentInitializer() {
-        logger = ExtendedLogUtils.wrapJULLoggger(Logger.getLogger(getClass().getName()));
+        super();
     }
 
     @Override
-    public void contextInitialized(ServletContextEvent sce) {
-        Log curLogger=logger;
-        try {
-            ServletContext  context=sce.getServletContext();
-            logger = ServletUtils.wrapServletContext(context, Level.CONFIG);
-            contextInitialized(context);
-        } finally {
-            logger = curLogger;
-        }
-    }
-
-    void contextInitialized(ServletContext context) {
-        PlaceholderResolver contextResolver=ServletUtils.toPlaceholderResolver(context);
-        Pair<File,Boolean>  result=ConfigUtils.resolveGitcloudBase(
-                new AggregatedExtendedPlaceholderResolver(contextResolver, ExtendedPlaceholderResolverUtils.SYSPROPS_RESOLVER, ExtendedPlaceholderResolverUtils.ENVIRON_RESOLVER));
-        File                rootDir=result.getLeft();
-        Boolean             baseExists=result.getRight();
-        if (!baseExists.booleanValue()) {
-            System.setProperty(ConfigUtils.GITCLOUD_BASE_PROP, rootDir.getAbsolutePath());
-            logger.info("contextInitialized(" + context.getContextPath() + ") - added " + ConfigUtils.GITCLOUD_BASE_PROP + ": " + ExtendedFileUtils.toString(rootDir));
-        } else {
-            logger.info("contextInitialized(" + context.getContextPath() + ") using " + ConfigUtils.GITCLOUD_BASE_PROP + ": " + ExtendedFileUtils.toString(rootDir));
-        }
-
+    protected void extractConfigFiles(File confDir) {
         // TODO use some automatic detection mechanism for "META-INF/conf"
-        extractConfigFiles(new File(rootDir, ConfigUtils.CONF_DIR_NAME), PROPS_FILE_NAME, "gitcloud-backend-log4j.xml");
-    }
-
-    void extractConfigFiles(File confDir, String ... names) {
-        if (ConfigUtils.verifyFolderProperty(ConfigUtils.CONF_DIR_NAME, confDir)) {
-            logger.info("Created " + ExtendedFileUtils.toString(confDir));
-        }
-        
-        ClassLoader cl=ExtendedClassUtils.getDefaultClassLoader(getClass());
-        byte[]      workBuf=null;
-        for (String fileName : names) {
-            File    targetFile=new File(confDir, fileName);
-            if (targetFile.exists()) {
-                logger.info("extractConfigFiles(" + fileName + ") skip - already exists: " + ExtendedFileUtils.toString(targetFile));
-                continue;
-            }
-            
-            if (workBuf == null) {
-                workBuf = new byte[ExtendedIOUtils.DEFAULT_BUFFER_SIZE_VALUE];
-            }
-
-            try {
-                long    copyLength=extractConfigFile(cl.getResourceAsStream("META-INF/" + ConfigUtils.CONF_DIR_NAME + "/" + fileName), targetFile, workBuf);
-                if (copyLength <= 0L) {
-                    throw new StreamCorruptedException("Bad copy count: " + copyLength);
-                }
-                logger.info("extractConfigFiles(" + fileName + ")[" + copyLength + " bytes]: " + ExtendedFileUtils.toString(targetFile));
-            } catch(IOException e) {
-                RuntimeException    thrown=new RuntimeException("extractConfigFiles(" + fileName + ") " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
-                logger.warn(thrown.getMessage(), e);
-                throw thrown;
-            }
-        }
-    }
-
-    long extractConfigFile(InputStream srcData, File targetFile, byte[] workBuf) throws IOException {
-        if (srcData == null) {
-            throw new FileNotFoundException("No input stream");
-        }
-
-        try {
-            return ExtendedIOUtils.copyLarge(srcData, targetFile, workBuf);
-        } finally {
-            srcData.close();
-        }
-    }
-
-    @Override
-    public void contextDestroyed(ServletContextEvent sce) {
-        // ignored
+        extractConfigFiles(confDir,
+                Collections.singletonList(Pair.<String,Collection<String>>of("META-INF/" + ConfigUtils.CONF_DIR_NAME, Arrays.asList(PROPS_FILE_NAME, "gitcloud-backend-log4j.xml"))));
     }
 }

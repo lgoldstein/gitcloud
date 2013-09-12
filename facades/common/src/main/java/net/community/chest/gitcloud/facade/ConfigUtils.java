@@ -47,7 +47,7 @@ public final class ConfigUtils {
      * @throws IllegalStateException if any of the validation tests fails
      * @see File#mkdirs()
      */
-    public static final boolean verifyFolderProperty(String propName, File propValue) {
+    public static final boolean verifyFolderProperty(String propName, File propValue) throws IllegalStateException {
         if (propValue.exists()) {
             if (!propValue.isDirectory()) {
                 throw new IllegalStateException("verifyFolderProperty(" + propName + ") not a folder: " + ExtendedFileUtils.toString(propValue));

@@ -76,7 +76,7 @@ public class FacadeContextInitializer
         ConfigurableEnvironment     environment=applicationContext.getEnvironment();
         MutablePropertySources      propSources=environment.getPropertySources();
         ExtendedPlaceholderResolver sourcesResolver=ExtendedPlaceholderResolverUtils.toPlaceholderResolver(propSources);
-        File                        nimbusBase=resolveNimbusBase(propSources, sourcesResolver);
+        File                        nimbusBase=resolveApplicationBase(propSources, sourcesResolver);
         Collection<String>          activeProfiles=resolveActiveProfiles(sourcesResolver);
         if (ExtendedCollectionUtils.size(activeProfiles) > 0) {
             environment.setActiveProfiles(activeProfiles.toArray(new String[activeProfiles.size()]));
@@ -178,20 +178,20 @@ public class FacadeContextInitializer
         return outputCollection;
     }
 
-    protected File resolveNimbusBase(MutablePropertySources propSources, ExtendedPlaceholderResolver sourcesResolver) {
+    protected File resolveApplicationBase(MutablePropertySources propSources, ExtendedPlaceholderResolver sourcesResolver) {
         Pair<File,Boolean>  result=ConfigUtils.resolveGitcloudBase(sourcesResolver);
         File                rootDir=result.getLeft();
         Boolean             baseExists=result.getRight();
         if (!baseExists.booleanValue()) {
-            propSources.addFirst(new MapPropertySource("nimbusBase", Collections.<String,Object>singletonMap(ConfigUtils.GITCLOUD_BASE_PROP, rootDir.getAbsolutePath())));
+            propSources.addFirst(new MapPropertySource("gitcloudBase", Collections.<String,Object>singletonMap(ConfigUtils.GITCLOUD_BASE_PROP, rootDir.getAbsolutePath())));
             System.setProperty(ConfigUtils.GITCLOUD_BASE_PROP, rootDir.getAbsolutePath());
-            logger.info("resolveNimbusBase - added " + ConfigUtils.GITCLOUD_BASE_PROP + ": " + ExtendedFileUtils.toString(rootDir));
+            logger.info("resolveApplicationBase - added " + ConfigUtils.GITCLOUD_BASE_PROP + ": " + ExtendedFileUtils.toString(rootDir));
         }
 
         return rootDir;
     }
 
-    void showArtifactsVersions() {
+    protected void showArtifactsVersions() {
         scanArtifactsManifests(new Predicate<Pair<URL,Manifest>>() {
             @Override
             @SuppressWarnings("synthetic-access")
@@ -211,7 +211,7 @@ public class FacadeContextInitializer
         });
     }
 
-    void scanArtifactsManifests(Predicate<Pair<URL,Manifest>> manifestHandler) {
+    protected void scanArtifactsManifests(Predicate<Pair<URL,Manifest>> manifestHandler) {
         ClassLoader loader=ExtendedClassUtils.getDefaultClassLoader(getClass());
         try {
             for (Enumeration<URL> manifests=loader.getResources(JarFile.MANIFEST_NAME);

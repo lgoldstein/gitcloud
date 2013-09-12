@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="back-end" default="install">
-    <description>
-        Provides some useful ANT tasks involving the entire project
-    </description>
-
     <dirname property="module.root.folder" file="${ant.file}" />
     <dirname property="facades.root.folder" file="${module.root.folder}" />
 	   <!-- override it since the Maven artifact name is different than what we want to deploy -->
