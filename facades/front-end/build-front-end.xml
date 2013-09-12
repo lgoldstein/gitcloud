@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="front-end" default="front-end-base">
+    <dirname property="module.root.folder" file="${ant.file}" />
+    <property name="frontend.root.folder" value="${module.root.folder}" />
+    <dirname property="facades.root.folder" file="${frontend.root.folder}" />
+    <property name="module.artifact.name" value="${ant.project.name}" />
+    <import file="${facades.root.folder}${file.separator}build-facades.xml" />
+
+    <target name="front-end-base" depends="facades-base"  />
+</project>

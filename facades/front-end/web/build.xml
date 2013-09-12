@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="front-end-web" default="install">
+    <dirname property="module.root.folder" file="${ant.file}" />
+    <dirname property="frontend.root.folder" file="${module.root.folder}" />
+	   <!-- override it since the Maven artifact name is different than what we want to deploy -->
+    <property name="module.artifact.war.deploy.name" value="git-frontend" />
+    <import file="${frontend.root.folder}${file.separator}build-front-end.xml" />
+
+    <target name="deploy-tomcat-artifact" depends="warn-tomcat-not-found" if="tomcat.available"
+    	    description="Copies the WAR file to the Tomcat server">
+        <antcall target="deploy-module-war">
+            <param name="deploy.module.war.target" value="${tomcat.webapps.folder}" />
+        </antcall>
+    </target>
+
+    <target name="clean-tomcat-deployment" depends="warn-tomcat-not-found"  if="tomcat.available"
+    	     description="Remove the WAR file from the Tomcat server">
+        <antcall target="undeploy-module-war">
+            <param name="deploy.module.war.target" value="${tomcat.webapps.folder}" />
+        </antcall>
+    </target>
+
+	<target name="install" depends="compile,deploy-tomcat-artifact"
+		    description="Compiles (including all the tests) and deploys the required artifacts" />
+    <target name="clean" depends="uncompile,clean-tomcat-deployment"
+            description="Removes the artifact" />
+    <target name="re-install" depends="clean,install"
+            description="Re-creates and deploys the artifact" />
+</project>

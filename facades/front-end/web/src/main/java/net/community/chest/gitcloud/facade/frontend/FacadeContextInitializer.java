@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.community.chest.gitcloud.facade.backend;
+package net.community.chest.gitcloud.facade.frontend;
 
 import java.io.File;
 
