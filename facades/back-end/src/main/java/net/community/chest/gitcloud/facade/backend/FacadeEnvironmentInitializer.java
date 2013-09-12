@@ -38,6 +38,9 @@ public class FacadeEnvironmentInitializer extends AbstractEnvironmentInitializer
     protected void extractConfigFiles(File confDir) {
         // TODO use some automatic detection mechanism for "META-INF/conf"
         extractConfigFiles(confDir,
-                Collections.singletonList(Pair.<String,Collection<String>>of("META-INF/" + ConfigUtils.CONF_DIR_NAME, Arrays.asList(PROPS_FILE_NAME, "gitcloud-backend-log4j.xml"))));
+                Collections.singletonList(
+                        Pair.<String,Collection<String>>of("META-INF/" + ConfigUtils.CONF_DIR_NAME,
+                                Collections.unmodifiableList(
+                                        Arrays.asList(PROPS_FILE_NAME, "gitcloud-backend-log4j.xml")))));
     }
 }
