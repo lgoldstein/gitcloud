@@ -21,6 +21,8 @@ import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.jgit.http.server.GitServlet;
+import org.eclipse.jgit.transport.resolver.ReceivePackFactory;
+import org.eclipse.jgit.transport.resolver.RepositoryResolver;
 import org.eclipse.jgit.transport.resolver.UploadPackFactory;
 
 /**
@@ -37,11 +39,23 @@ public class GitBackendServlet extends GitServlet {
 
     @Override
     public void init(ServletConfig config) throws ServletException {
-        final UploadPackFactory<HttpServletRequest>   uploadFactory=BackendUploadPackFactory.getInstance();
+        RepositoryResolver<HttpServletRequest>  resolver=BackendRepositoryResolver.getInstance();
+        if (resolver == null) {
+            throw new ServletException("Repository resolver N/A");
+        }
+
+        UploadPackFactory<HttpServletRequest>   uploadFactory=BackendUploadPackFactory.getInstance();
         if (uploadFactory == null) {
             throw new ServletException("Backend upload factory N/A");
         }
 
+        ReceivePackFactory<HttpServletRequest>  receiveFactory=BackendReceivePackFactory.getInstance();
+        if (receiveFactory == null) {
+            throw new ServletException("Backend receive factory N/A");
+        }
+
+        setRepositoryResolver(resolver);
+        setReceivePackFactory(receiveFactory);
         setUploadPackFactory(uploadFactory);
         super.init(config);
     }

@@ -21,10 +21,10 @@ import javax.inject.Inject;
 import net.community.chest.gitcloud.facade.git.PackFactory;
 
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.transport.UploadPack;
+import org.eclipse.jgit.transport.ReceivePack;
+import org.eclipse.jgit.transport.resolver.ReceivePackFactory;
 import org.eclipse.jgit.transport.resolver.ServiceNotAuthorizedException;
 import org.eclipse.jgit.transport.resolver.ServiceNotEnabledException;
-import org.eclipse.jgit.transport.resolver.UploadPackFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
@@ -32,32 +32,32 @@ import org.springframework.util.SystemPropertyUtils;
 
 /**
  * @author Lyor Goldstein
- * @since Sep 12, 2013 9:19:26 AM
+ * @since Sep 12, 2013 10:41:52 AM
  */
 @Component
-public class BackendUploadPackFactory<C> extends PackFactory<C> implements UploadPackFactory<C> {
-    public static final int DEFAULT_UPLOAD_TIMEOUT_SEC=DEFAULT_TIMEOUT_SEC;
-    public static final String  UPLOAD_TIMEOUT_SEC_PROP="gitcloud.backend.upload.pack.timeout.sec";
-    private static final String UPLOAD_TIMEOUT_SEC_INJECTION_VALUE=SystemPropertyUtils.PLACEHOLDER_PREFIX
-                                              + UPLOAD_TIMEOUT_SEC_PROP
+public class BackendReceivePackFactory<C> extends PackFactory<C> implements ReceivePackFactory<C> {
+    public static final int DEFAULT_RECEIVE_TIMEOUT_SEC=DEFAULT_TIMEOUT_SEC;
+    public static final String  RECEIVE_TIMEOUT_SEC_PROP="gitcloud.backend.receive.pack.timeout.sec";
+    private static final String RECEIVE_TIMEOUT_SEC_INJECTION_VALUE=SystemPropertyUtils.PLACEHOLDER_PREFIX
+                                              + RECEIVE_TIMEOUT_SEC_PROP
                                               + SystemPropertyUtils.VALUE_SEPARATOR
-                                              + DEFAULT_UPLOAD_TIMEOUT_SEC
+                                              + DEFAULT_RECEIVE_TIMEOUT_SEC
                                               + SystemPropertyUtils.PLACEHOLDER_SUFFIX
                                               ;
     // we need this subterfuge since the GitBackendServlet has no injection capabilities
-    private static final AtomicReference<UploadPackFactory<?>> holder=new AtomicReference<UploadPackFactory<?>>(null);
+    private static final AtomicReference<ReceivePackFactory<?>> holder=new AtomicReference<ReceivePackFactory<?>>(null);
     @SuppressWarnings("unchecked")
-    public static final <T> UploadPackFactory<T> getInstance() {
-        return (UploadPackFactory<T>) holder.get();
+    public static final <T> ReceivePackFactory<T> getInstance() {
+        return (ReceivePackFactory<T>) holder.get();
     }
-            
-    private final int uploadTimeoutValue;
+
+    private final int receiveTimeoutValue;
 
     @Inject
-    public BackendUploadPackFactory(@Value(UPLOAD_TIMEOUT_SEC_INJECTION_VALUE) int timeoutValue) {
+    public BackendReceivePackFactory(@Value(RECEIVE_TIMEOUT_SEC_INJECTION_VALUE) int timeoutValue) {
         Assert.state(timeoutValue > 0, "Bad timeout value: " + timeoutValue);
-        uploadTimeoutValue = timeoutValue;
-        
+        receiveTimeoutValue = timeoutValue;
+
         synchronized(holder) {
             Assert.state(holder.get() == null, "Double registered factory");
             holder.set(this);
@@ -65,10 +65,23 @@ public class BackendUploadPackFactory<C> extends PackFactory<C> implements Uploa
     }
 
     @Override
-    public UploadPack create(C req, Repository db)
+    public ReceivePack create(C req, Repository db)
             throws ServiceNotEnabledException, ServiceNotAuthorizedException {
-        UploadPack up = new UploadPack(db);
-        up.setTimeout(uploadTimeoutValue);
-        return up;
+        ReceivePack receive=new ReceivePack(db);
+        receive.setTimeout(receiveTimeoutValue);
+        
+        // TODO set pushing user identity for reflog
+        // receive.setRefLogIdent(new PersonIdent(user.username, user.username + "@" + origin))
+        
+        // TODO set advanced options
+        // receive.setAllowCreates(user.canCreateRef(repository));
+        // receive.setAllowDeletes(user.canDeleteRef(repository));
+        // receive.setAllowNonFastForwards(user.canRewindRef(repository));
+
+        // TODO setup the receive hooks
+        // receive.setPreReceiveHook(preRcvHook);
+        // receive.setPostReceiveHook(postRcvHook);
+
+        return receive;
     }
 }
