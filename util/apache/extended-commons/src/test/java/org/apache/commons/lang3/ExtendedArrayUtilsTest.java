@@ -28,7 +28,6 @@ import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
-
 /**
  * @author lgoldstein
  */
@@ -240,6 +239,24 @@ public class ExtendedArrayUtilsTest extends AbstractTestSupport {
                     a1[pos] = value;
                     a2[pos] = value;
                 }
+            }
+        }
+    }
+
+    @Test   // NOTE: this test represents all other values - int, short, etc. - since the code is the same
+    public void testIndexOfLimitedLengthByteArray() {
+        byte[]  data=new byte[Byte.SIZE];
+        for (byte v=0; v < data.length; v++) {
+            data[v] = v;
+        }
+        
+        for (int    index=0; index < data.length; index++) {
+            byte    valueToFind=data[index];
+            assertEquals("Unexpected excluded value result for value-to-find=" + valueToFind,
+                          ArrayUtils.INDEX_NOT_FOUND, ExtendedArrayUtils.indexOf(data, valueToFind, 0, index - 1));
+            for (int    startIndex=0; startIndex <= index; startIndex++) {
+                assertEquals("Unexpected start index=" + startIndex + " result for value-to-find=" + valueToFind,
+                        index, ExtendedArrayUtils.indexOf(data, valueToFind, index, data.length - startIndex));
             }
         }
     }

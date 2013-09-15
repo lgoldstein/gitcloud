@@ -24,6 +24,11 @@ import java.io.IOException;
  */
 public interface LineLevelAppender {
     /**
+     * A typical line length used in many textual standards
+     */
+    static final int TYPICAL_LINE_LENGTH=80;
+
+    /**
      * @return TRUE if OK to accumulate data in work buffer
      */
     boolean isWriteEnabled ();

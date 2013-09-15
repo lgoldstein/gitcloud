@@ -755,7 +755,255 @@ public class ExtendedArrayUtils extends ArrayUtils {
                 }
             }
         }
-        
+
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * <p>Finds the index of the given value in the array starting at the given index
+     * and checking up to specified number of elements.</p>
+     *
+     * <p>This method returns {@link #INDEX_NOT_FOUND} ({@code -1}) for a {@code null} input array.</p>
+     *
+     * <p>A negative startIndex is treated as zero. A startIndex larger than the array
+     * length will return {@link #INDEX_NOT_FOUND} ({@code -1}).</p>
+     *
+     * @param array  the array to search through for the object, may be {@code null}
+     * @param valueToFind  the value to find
+     * @param startIndex  the index to start searching at
+     * @param len the number of elements to search from the start index
+     * @return the index of the value within the array,
+     *  {@link #INDEX_NOT_FOUND} ({@code -1}) if not found or {@code null} array input
+     *  or non-positive number of elements
+     */
+    public static final int indexOf(byte[] array, byte valueToFind, int startIndex, int len) {
+        if (array == null) {
+            return INDEX_NOT_FOUND;
+        }
+
+        for (int i = Math.max(startIndex,0), l=0; l < len; i++, l++) {
+            if (valueToFind == array[i]) {
+                return i;
+            }
+        }
+
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * <p>Finds the index of the given value in the array starting at the given index
+     * and checking up to specified number of elements.</p>
+     *
+     * <p>This method returns {@link #INDEX_NOT_FOUND} ({@code -1}) for a {@code null} input array.</p>
+     *
+     * <p>A negative startIndex is treated as zero. A startIndex larger than the array
+     * length will return {@link #INDEX_NOT_FOUND} ({@code -1}).</p>
+     *
+     * @param array  the array to search through for the object, may be {@code null}
+     * @param valueToFind  the value to find
+     * @param startIndex  the index to start searching at
+     * @param len the number of elements to search from the start index
+     * @return the index of the value within the array,
+     *  {@link #INDEX_NOT_FOUND} ({@code -1}) if not found or {@code null} array input
+     *  or non-positive number of elements
+     */
+    public static final int indexOf(short[] array, short valueToFind, int startIndex, int len) {
+        if (array == null) {
+            return INDEX_NOT_FOUND;
+        }
+
+        for (int i = Math.max(startIndex,0), l=0; l < len; i++, l++) {
+            if (valueToFind == array[i]) {
+                return i;
+            }
+        }
+
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * <p>Finds the index of the given value in the array starting at the given index
+     * and checking up to specified number of elements.</p>
+     *
+     * <p>This method returns {@link #INDEX_NOT_FOUND} ({@code -1}) for a {@code null} input array.</p>
+     *
+     * <p>A negative startIndex is treated as zero. A startIndex larger than the array
+     * length will return {@link #INDEX_NOT_FOUND} ({@code -1}).</p>
+     *
+     * @param array  the array to search through for the object, may be {@code null}
+     * @param valueToFind  the value to find
+     * @param startIndex  the index to start searching at
+     * @param len the number of elements to search from the start index
+     * @return the index of the value within the array,
+     *  {@link #INDEX_NOT_FOUND} ({@code -1}) if not found or {@code null} array input
+     *  or non-positive number of elements
+     */
+    public static final int indexOf(int[] array, int valueToFind, int startIndex, int len) {
+        if (array == null) {
+            return INDEX_NOT_FOUND;
+        }
+
+        for (int i = Math.max(startIndex,0), l=0; l < len; i++, l++) {
+            if (valueToFind == array[i]) {
+                return i;
+            }
+        }
+
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * <p>Finds the index of the given value in the array starting at the given index
+     * and checking up to specified number of elements.</p>
+     *
+     * <p>This method returns {@link #INDEX_NOT_FOUND} ({@code -1}) for a {@code null} input array.</p>
+     *
+     * <p>A negative startIndex is treated as zero. A startIndex larger than the array
+     * length will return {@link #INDEX_NOT_FOUND} ({@code -1}).</p>
+     *
+     * @param array  the array to search through for the object, may be {@code null}
+     * @param valueToFind  the value to find
+     * @param startIndex  the index to start searching at
+     * @param len the number of elements to search from the start index
+     * @return the index of the value within the array,
+     *  {@link #INDEX_NOT_FOUND} ({@code -1}) if not found or {@code null} array input
+     *  or non-positive number of elements
+     */
+    public static final int indexOf(long[] array, long valueToFind, int startIndex, int len) {
+        if (array == null) {
+            return INDEX_NOT_FOUND;
+        }
+
+        for (int i = Math.max(startIndex,0), l=0; l < len; i++, l++) {
+            if (valueToFind == array[i]) {
+                return i;
+            }
+        }
+
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * <p>Finds the index of the given value in the array starting at the given index
+     * and checking up to specified number of elements.</p>
+     *
+     * <p>This method returns {@link #INDEX_NOT_FOUND} ({@code -1}) for a {@code null} input array.</p>
+     *
+     * <p>A negative startIndex is treated as zero. A startIndex larger than the array
+     * length will return {@link #INDEX_NOT_FOUND} ({@code -1}).</p>
+     *
+     * @param array  the array to search through for the object, may be {@code null}
+     * @param valueToFind  the value to find
+     * @param startIndex  the index to start searching at
+     * @param len the number of elements to search from the start index
+     * @return the index of the value within the array,
+     *  {@link #INDEX_NOT_FOUND} ({@code -1}) if not found or {@code null} array input
+     *  or non-positive number of elements
+     */
+    public static final int indexOf(float[] array, float valueToFind, int startIndex, int len) {
+        if (array == null) {
+            return INDEX_NOT_FOUND;
+        }
+
+        for (int i = Math.max(startIndex,0), l=0; l < len; i++, l++) {
+            if (ExtendedNumberUtils.compare(valueToFind, array[i]) == 0) {
+                return i;
+            }
+        }
+
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * <p>Finds the index of the given value in the array starting at the given index
+     * and checking up to specified number of elements.</p>
+     *
+     * <p>This method returns {@link #INDEX_NOT_FOUND} ({@code -1}) for a {@code null} input array.</p>
+     *
+     * <p>A negative startIndex is treated as zero. A startIndex larger than the array
+     * length will return {@link #INDEX_NOT_FOUND} ({@code -1}).</p>
+     *
+     * @param array  the array to search through for the object, may be {@code null}
+     * @param valueToFind  the value to find
+     * @param startIndex  the index to start searching at
+     * @param len the number of elements to search from the start index
+     * @return the index of the value within the array,
+     *  {@link #INDEX_NOT_FOUND} ({@code -1}) if not found or {@code null} array input
+     *  or non-positive number of elements
+     */
+    public static final int indexOf(double[] array, double valueToFind, int startIndex, int len) {
+        if (array == null) {
+            return INDEX_NOT_FOUND;
+        }
+
+        for (int i = Math.max(startIndex,0), l=0; l < len; i++, l++) {
+            if (ExtendedNumberUtils.compare(valueToFind, array[i]) == 0) {
+                return i;
+            }
+        }
+
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * <p>Finds the index of the given value in the array starting at the given index
+     * and checking up to specified number of elements.</p>
+     *
+     * <p>This method returns {@link #INDEX_NOT_FOUND} ({@code -1}) for a {@code null} input array.</p>
+     *
+     * <p>A negative startIndex is treated as zero. A startIndex larger than the array
+     * length will return {@link #INDEX_NOT_FOUND} ({@code -1}).</p>
+     *
+     * @param array  the array to search through for the object, may be {@code null}
+     * @param valueToFind  the value to find
+     * @param startIndex  the index to start searching at
+     * @param len the number of elements to search from the start index
+     * @return the index of the value within the array,
+     *  {@link #INDEX_NOT_FOUND} ({@code -1}) if not found or {@code null} array input
+     *  or non-positive number of elements
+     */
+    public static final int indexOf(boolean[] array, boolean valueToFind, int startIndex, int len) {
+        if (array == null) {
+            return INDEX_NOT_FOUND;
+        }
+
+        for (int i = Math.max(startIndex,0), l=0; l < len; i++, l++) {
+            if (valueToFind == array[i]) {
+                return i;
+            }
+        }
+
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * <p>Finds the index of the given value in the array starting at the given index
+     * and checking up to specified number of elements.</p>
+     *
+     * <p>This method returns {@link #INDEX_NOT_FOUND} ({@code -1}) for a {@code null} input array.</p>
+     *
+     * <p>A negative startIndex is treated as zero. A startIndex larger than the array
+     * length will return {@link #INDEX_NOT_FOUND} ({@code -1}).</p>
+     *
+     * @param array  the array to search through for the object, may be {@code null}
+     * @param valueToFind  the value to find
+     * @param startIndex  the index to start searching at
+     * @param len the number of elements to search from the start index
+     * @return the index of the value within the array,
+     *  {@link #INDEX_NOT_FOUND} ({@code -1}) if not found or {@code null} array input
+     *  or non-positive number of elements
+     */
+    public static final int indexOf(char[] array, char valueToFind, int startIndex, int len) {
+        if (array == null) {
+            return INDEX_NOT_FOUND;
+        }
+
+        for (int i = Math.max(startIndex,0), l=0; l < len; i++, l++) {
+            if (valueToFind == array[i]) {
+                return i;
+            }
+        }
+
         return INDEX_NOT_FOUND;
     }
 
