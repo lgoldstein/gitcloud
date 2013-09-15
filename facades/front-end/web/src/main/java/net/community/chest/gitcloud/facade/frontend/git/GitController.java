@@ -20,8 +20,9 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -35,7 +36,6 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.collections15.ExtendedCollectionUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.ExtendedArrayUtils;
 import org.apache.commons.lang3.ExtendedValidate;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.ExtendedLogUtils;
@@ -113,8 +113,7 @@ public class GitController extends RefreshedContextAttacher {
             } else {
                 rsp.sendError(statusCode);
                 
-                // TODO use final static list
-                copyResponseHeadersValues(conn, rsp, "Content-type", "Content-Encoding", "Content-Length", "Transfer-Encoding");
+                copyResponseHeadersValues(conn, rsp);
 
                 if (RequestMethod.GET.equals(method)) {
                     InputStream rspData=conn.getInputStream();
@@ -168,6 +167,7 @@ public class GitController extends RefreshedContextAttacher {
         }
     }
     
+    // TODO move this to some generic util location
     private HttpURLConnection openTargetConnection(RequestMethod method, URL url, HttpServletRequest req) throws IOException {
         HttpURLConnection   conn=(HttpURLConnection) url.openConnection();
         if (conn instanceof HttpsURLConnection) {
@@ -184,23 +184,15 @@ public class GitController extends RefreshedContextAttacher {
             conn.setDoOutput(true);
         }
 
-        // TODO use final static list
-        copyRequestHeadersValues(req, conn, "Accept", "Accept-Encoding", "Content-Type", "Content-Encoding", "Content-Length");
+        copyRequestHeadersValues(req, conn);
         return conn;
     }
 
-    private Map<String,String> copyRequestHeadersValues(HttpServletRequest req, HttpURLConnection conn, String ... headers) {
-        return copyRequestHeadersValues(req, conn, ExtendedArrayUtils.asList(headers));
-    }
-    
-    private Map<String,String> copyRequestHeadersValues(HttpServletRequest req, HttpURLConnection conn, Collection<String> headers) {
-        if (ExtendedCollectionUtils.isEmpty(headers)) {
-            return Collections.emptyMap();
-        }
-        
-        Map<String,String>  hdrsValues=null;
-        for (String hdrName : headers) {
-            String  hdrValue=req.getHeader(hdrName);
+    // TODO move this to some generic util location
+    private Map<String,String> copyRequestHeadersValues(HttpServletRequest req, HttpURLConnection conn) {
+        Map<String,String>  hdrsValues=new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
+        for (Enumeration<String> hdrs=req.getHeaderNames(); (hdrs != null) && hdrs.hasMoreElements(); ) {
+            String  hdrName=hdrs.nextElement(), hdrValue=req.getHeader(hdrName);
             if (StringUtils.isEmpty(hdrValue)) {
                 continue;
             }
@@ -209,57 +201,61 @@ public class GitController extends RefreshedContextAttacher {
                 logger.trace("copyRequestHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                            + " " + hdrName + ": " + hdrValue);
             }
+
             conn.setRequestProperty(hdrName, hdrValue);
-            
-            if (hdrsValues == null) {
-                hdrsValues = new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
-            }
-            
             hdrsValues.put(hdrName, hdrValue);
         }
-        
-        if (hdrsValues == null) {
-            return Collections.emptyMap();
-        } else {
-            return hdrsValues;
-        }
+
+        return hdrsValues;
     }
 
-    private Map<String,String> copyResponseHeadersValues(HttpURLConnection conn, HttpServletResponse rsp, String ... headers) {
-        return copyResponseHeadersValues(conn, rsp, ExtendedArrayUtils.asList(headers));
-    }
-    
-    private Map<String,String> copyResponseHeadersValues(HttpURLConnection conn, HttpServletResponse rsp, Collection<String> headers) {
-        if (ExtendedCollectionUtils.isEmpty(headers)) {
-            return Collections.emptyMap();
-        }
-        
-        Map<String,String>  hdrsValues=null;
-        for (String hdrName : headers) {
-            String  hdrValue=conn.getHeaderField(hdrName);
-            if (StringUtils.isEmpty(hdrValue)) {
+    // TODO move this to some generic util location
+    private Map<String,String> copyResponseHeadersValues(HttpURLConnection conn, HttpServletResponse rsp) {
+        Map<String,String>          hdrsValues=new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
+        Map<String,List<String>>    headerFields=conn.getHeaderFields();
+        for (Map.Entry<String,List<String>> hdr : headerFields.entrySet()) {
+            String  hdrName=hdr.getKey();
+            if (StringUtils.isEmpty(hdrName)) {
+                continue;   // The response code + message is encoded using an empty header name
+            }
+
+            List<String>    values=hdr.getValue();
+            if (ExtendedCollectionUtils.isEmpty(values)) {
                 continue;
             }
-            
-            if (logger.isTraceEnabled()) {
-                URL url=conn.getURL();
-                logger.trace("copyResponseHeadersValues(" + url.toExternalForm() + "] " + hdrName + ": " + hdrValue);
-            }
 
-            rsp.setHeader(hdrName, hdrValue);
-            
-            if (hdrsValues == null) {
-                hdrsValues = new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
+            if (values.size() == 1) {
+                String  hdrValue=values.get(0);
+                if (StringUtils.isEmpty(hdrValue)) {
+                    continue;
+                }
+
+                if (logger.isTraceEnabled()) {
+                    URL url=conn.getURL();
+                    logger.trace("copyResponseHeadersValues(" + url.toExternalForm() + "] " + hdrName + ": " + hdrValue);
+                }
+
+                rsp.setHeader(hdrName, hdrValue);
+                hdrsValues.put(hdrName, hdrValue);
+            } else {
+                for (int index=0; index < values.size(); index++) {
+                    String  hdrValue=values.get(index);
+                    if (StringUtils.isEmpty(hdrValue)) {
+                        continue;   // unexpected, but ignored
+                    }
+
+                    rsp.addHeader(hdrName, hdrValue);
+                    if (logger.isTraceEnabled()) {
+                        URL url=conn.getURL();
+                        logger.trace("copyResponseHeadersValues(" + url.toExternalForm() + "] " + hdrName + "[" + index + "]: " + hdrValue);
+                    }
+                }
+
+                hdrsValues.put(hdrName, StringUtils.join(values, ','));
             }
-            
-            hdrsValues.put(hdrName, hdrValue);
         }
         
-        if (hdrsValues == null) {
-            return Collections.emptyMap();
-        } else {
-            return hdrsValues;
-        }
+        return hdrsValues;
     }
 
     // TODO move this to some generic util location
