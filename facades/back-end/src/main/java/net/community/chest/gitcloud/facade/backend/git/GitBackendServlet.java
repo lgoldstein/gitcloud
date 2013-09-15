@@ -14,9 +14,13 @@
  */
 package net.community.chest.gitcloud.facade.backend.git;
 
+import java.io.IOException;
+import java.util.Enumeration;
+
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -58,5 +62,36 @@ public class GitBackendServlet extends GitServlet {
         setReceivePackFactory(receiveFactory);
         setUploadPackFactory(uploadFactory);
         super.init(config);
+    }
+    
+    @Override
+    protected void service(HttpServletRequest req, HttpServletResponse res)
+            throws ServletException, IOException {
+        if (logger.isDebugEnabled()) {
+            logger.debug("service(" + req.getMethod() + ")[" + req.getPathInfo() + "][" + req.getQueryString() + "]");
+        }
+        
+        if (logger.isTraceEnabled()) {
+            for (Enumeration<String> hdrs=req.getHeaderNames(); (hdrs != null) && hdrs.hasMoreElements(); ) {
+                String  hdrName=hdrs.nextElement(), hdrValue=req.getHeader(hdrName);
+                logger.trace("service(" + req.getMethod() + ")[" + req.getPathInfo() + "][" + req.getQueryString() + "]"
+                           + " REQ " + hdrName + ": " + hdrValue);
+            }
+        }
+
+        super.service(req, res);
+        
+        if (logger.isDebugEnabled()) {
+            logger.debug("service(" + req.getMethod() + ")[" + req.getPathInfo() + "][" + req.getQueryString() + "]"
+                       + " Content-Type: " + res.getContentType() + ", status=" + res.getStatus());
+        }
+        
+        if (logger.isTraceEnabled()) {
+            for (String hdrName : res.getHeaderNames()) {
+                String  hdrValue=res.getHeader(hdrName);
+                logger.trace("service(" + req.getMethod() + ")[" + req.getPathInfo() + "][" + req.getQueryString() + "]"
+                           + " RSP " + hdrName + ": " + hdrValue);
+            }
+        }
     }
 }

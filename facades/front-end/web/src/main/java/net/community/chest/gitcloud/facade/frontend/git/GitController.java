@@ -35,11 +35,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.collections15.ExtendedCollectionUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ExtendedArrayUtils;
 import org.apache.commons.lang3.ExtendedValidate;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Validate;
 import org.apache.commons.logging.ExtendedLogUtils;
 import org.apache.commons.net.ssl.SSLUtils;
 import org.eclipse.jgit.http.server.GitSmartHttpTools;
@@ -79,7 +77,7 @@ public class GitController extends RefreshedContextAttacher {
             logger.debug("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]");
         }
 
-        URL url=resolveTargetRepository(req);
+        URL url=resolveTargetRepository(method, req);
         if (logger.isDebugEnabled()) {
             logger.debug("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                        + " redirected to " + url.toExternalForm());
@@ -115,7 +113,8 @@ public class GitController extends RefreshedContextAttacher {
             } else {
                 rsp.sendError(statusCode);
                 
-                copyResponseHeadersValues(conn, rsp, "Content-type");
+                // TODO use final static list
+                copyResponseHeadersValues(conn, rsp, "Content-type", "Content-Encoding", "Content-Length", "Transfer-Encoding");
 
                 if (RequestMethod.GET.equals(method)) {
                     InputStream rspData=conn.getInputStream();
@@ -140,13 +139,21 @@ public class GitController extends RefreshedContextAttacher {
         }
     }
     
-    private URL resolveTargetRepository(HttpServletRequest req) throws IOException {
-        String  op=req.getParameter("service");
+    private URL resolveTargetRepository(RequestMethod method, HttpServletRequest req) throws IOException {
+        String  op=null, uriPath=req.getPathInfo();
+        if (RequestMethod.GET.equals(method)) {
+            op = req.getParameter("service");
+        } else {
+            int pos=uriPath.lastIndexOf('/');
+            if ((pos > 0) && (pos < (uriPath.length() - 1))) {
+                op = uriPath.substring(pos + 1);
+            }
+        }
         if (!StringUtils.isEmpty(op)) {
             ExtendedValidate.isTrue(ALLOWED_SERVICES.contains(op), "Unsupported service: %s", op);
         }
         
-        String  uriPath=req.getPathInfo(), repoName=extractRepositoryName(uriPath);
+        String repoName=extractRepositoryName(uriPath);
         if (StringUtils.isEmpty(repoName)) {
             throw ExtendedLogUtils.thrownLogging(logger, Level.WARNING,
                                                  "resolveTargetRepository(" + uriPath + ")",
@@ -175,11 +182,10 @@ public class GitController extends RefreshedContextAttacher {
         
         if (RequestMethod.POST.equals(method)) {
             conn.setDoOutput(true);
-            copyRequestHeadersValues(req, conn, "Content-Type");
         }
 
-        // TODO copy the "Accept" and "Accept-Encoding" header values from the original request
-        copyRequestHeadersValues(req, conn, "Accept", "Accept-Encoding");
+        // TODO use final static list
+        copyRequestHeadersValues(req, conn, "Accept", "Accept-Encoding", "Content-Type", "Content-Encoding", "Content-Length");
         return conn;
     }
 
@@ -198,7 +204,11 @@ public class GitController extends RefreshedContextAttacher {
             if (StringUtils.isEmpty(hdrValue)) {
                 continue;
             }
-            
+
+            if (logger.isTraceEnabled()) {
+                logger.trace("copyRequestHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                           + " " + hdrName + ": " + hdrValue);
+            }
             conn.setRequestProperty(hdrName, hdrValue);
             
             if (hdrsValues == null) {
@@ -231,6 +241,11 @@ public class GitController extends RefreshedContextAttacher {
                 continue;
             }
             
+            if (logger.isTraceEnabled()) {
+                URL url=conn.getURL();
+                logger.trace("copyResponseHeadersValues(" + url.toExternalForm() + "] " + hdrName + ": " + hdrValue);
+            }
+
             rsp.setHeader(hdrName, hdrValue);
             
             if (hdrsValues == null) {
