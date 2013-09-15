@@ -36,6 +36,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.collections15.ExtendedCollectionUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.ExtendedCharSequenceUtils;
 import org.apache.commons.lang3.ExtendedValidate;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.ExtendedLogUtils;
@@ -214,7 +215,7 @@ public class GitController extends RefreshedContextAttacher {
         Map<String,String>          hdrsValues=new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
         Map<String,List<String>>    headerFields=conn.getHeaderFields();
         for (Map.Entry<String,List<String>> hdr : headerFields.entrySet()) {
-            String  hdrName=hdr.getKey();
+            String  hdrName=capitalizeHttpHeaderName(hdr.getKey());
             if (StringUtils.isEmpty(hdrName)) {
                 continue;   // The response code + message is encoded using an empty header name
             }
@@ -256,6 +257,56 @@ public class GitController extends RefreshedContextAttacher {
         }
         
         return hdrsValues;
+    }
+
+    // TODO move this to some generic util location
+    public static final String capitalizeHttpHeaderName(String hdrName) {
+        if (StringUtils.isEmpty(hdrName)) {
+            return hdrName;
+        }
+
+        int curPos=hdrName.indexOf('-');
+        if (curPos < 0) {
+            return ExtendedCharSequenceUtils.capitalize(hdrName);
+        }
+
+        StringBuilder   sb=null;
+        for (int  lastPos=0; ; ) {
+            char    ch=hdrName.charAt(lastPos), tch=Character.toTitleCase(ch);
+            if (ch != tch) {
+                if (sb == null) {
+                    sb = new StringBuilder(hdrName.length());
+                    // append the data that was OK
+                    if (lastPos > 0) {
+                        sb.append(hdrName.substring(0, lastPos));
+                    }
+                }
+                
+                sb.append(tch);
+                
+                if (curPos > lastPos) {
+                    sb.append(hdrName.substring(lastPos + 1 /* excluding the capital letter */, curPos + 1 /* including the '-' */));
+                } else {    // last component in string
+                    sb.append(hdrName.substring(lastPos + 1 /* excluding the capital letter */));
+                }
+            }
+
+            if (curPos < lastPos) {
+                break;
+            }
+
+            if ((lastPos=curPos + 1) >= hdrName.length()) {
+                break;
+            }
+            
+            curPos = hdrName.indexOf('-', lastPos);
+        }
+
+        if (sb == null) {   // There was no need to modify anything
+            return hdrName;
+        } else {
+            return sb.toString();
+        }
     }
 
     // TODO move this to some generic util location
