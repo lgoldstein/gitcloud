@@ -26,6 +26,8 @@ import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
 
+import org.apache.commons.net.ssh.keys.dss.DSSKeyDecoder;
+import org.apache.commons.net.ssh.keys.rsa.RSAKeyDecoder;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
 import org.junit.Test;

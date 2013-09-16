@@ -14,6 +14,10 @@
  */
 package net.community.chest.gitcloud.facade.backend.git;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
@@ -67,11 +71,22 @@ public class BackendUploadPackFactory<C> extends PackFactory<C> implements Uploa
     @Override
     public UploadPack create(C req, Repository db)
             throws ServiceNotEnabledException, ServiceNotAuthorizedException {
+        final File  dir=db.getDirectory();
         if (logger.isDebugEnabled()) {
-            logger.debug("UploadPack(" + db.getDirectory() + ")");
+            logger.debug("UploadPack(" + dir + ")");
         }
 
-        UploadPack up = new UploadPack(db);
+        UploadPack up = new UploadPack(db) {
+                @Override
+                @SuppressWarnings("synthetic-access")
+                public void upload(InputStream input, OutputStream output, OutputStream messages) throws IOException {
+                    if (logger.isTraceEnabled()) {
+                        
+                    } else {
+                        super.upload(input, output, messages);
+                    }
+                }
+            };
         up.setTimeout(uploadTimeoutValue);
         return up;
     }

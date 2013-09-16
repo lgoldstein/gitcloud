@@ -24,9 +24,9 @@ import java.security.PublicKey;
 import javax.crypto.Cipher;
 
 import org.apache.commons.net.ssh.keys.AbstractSSHKeysTestSupport;
-import org.apache.commons.net.ssh.keys.DSSKeyDecoder;
 import org.apache.commons.net.ssh.keys.KeyUtils;
-import org.apache.commons.net.ssh.keys.RSAKeyDecoder;
+import org.apache.commons.net.ssh.keys.dss.DSSKeyDecoder;
+import org.apache.commons.net.ssh.keys.rsa.RSAKeyDecoder;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;

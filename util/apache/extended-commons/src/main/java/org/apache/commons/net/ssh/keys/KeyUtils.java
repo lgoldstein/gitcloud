@@ -55,6 +55,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.math.ExtendedNumberUtils;
+import org.apache.commons.net.ssh.keys.dss.DSSKeyDecoder;
+import org.apache.commons.net.ssh.keys.rsa.RSAKeyDecoder;
 
 /**
  * @author Lyor G.

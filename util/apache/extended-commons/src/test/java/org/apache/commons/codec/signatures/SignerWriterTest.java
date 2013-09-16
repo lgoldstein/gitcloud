@@ -25,7 +25,7 @@ import java.security.PrivateKey;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.NullWriter;
-import org.apache.commons.net.ssh.keys.RSAKeyDecoder;
+import org.apache.commons.net.ssh.keys.rsa.RSAKeyDecoder;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;

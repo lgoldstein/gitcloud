@@ -40,6 +40,8 @@ import org.apache.commons.io.input.ExtendedCloseShieldInputStream;
 import org.apache.commons.lang3.ExtendedValidate;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.net.ssh.keys.KeyUtils;
+import org.apache.commons.net.ssh.keys.dss.DSSPuttyKeyDecoder;
+import org.apache.commons.net.ssh.keys.rsa.RSAPuttyKeyDecoder;
 
 /**
  * @author Lyor G.

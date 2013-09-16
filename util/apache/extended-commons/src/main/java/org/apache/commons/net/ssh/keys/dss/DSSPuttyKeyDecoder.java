@@ -14,42 +14,42 @@
  * limitations under the License.
  */
 
-package org.apache.commons.net.ssh.keys.putty;
+package org.apache.commons.net.ssh.keys.dss;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.security.PrivateKey;
-import java.security.spec.RSAPrivateCrtKeySpec;
+import java.security.spec.DSAPrivateKeySpec;
 
-import org.apache.commons.net.ssh.keys.RSAKeyDecoder;
+import org.apache.commons.net.ssh.keys.putty.AbstractPuttyKeyDecoder;
+import org.apache.commons.net.ssh.keys.putty.AbstractPuttyKeyDecoder.PuttyKeyReader;
 
 /**
  * @author Lyor G.
- * @since Jul 10, 2013 11:28:09 AM
+ * @since Jul 10, 2013 11:31:52 AM
  */
-public class RSAPuttyKeyDecoder extends AbstractPuttyKeyDecoder {
-    public static final RSAPuttyKeyDecoder  DECODER=new RSAPuttyKeyDecoder();
+public class DSSPuttyKeyDecoder extends AbstractPuttyKeyDecoder {
+    public static final DSSPuttyKeyDecoder  DECODER=new DSSPuttyKeyDecoder();
 
-    public RSAPuttyKeyDecoder() {
-        super(RSAKeyDecoder.SSH_RSA, RSAKeyDecoder.RSA_ALGORITHM);
+    public DSSPuttyKeyDecoder() {
+        super(DSSKeyDecoder.SSH_DSS, DSSKeyDecoder.DSS_ALGORITHM);
     }
 
     @Override
     protected PrivateKey decodePrivateKey(PuttyKeyReader pubReader, PuttyKeyReader prvReader) throws IOException {
-        pubReader.skip();
+        pubReader.skip();   // skip version
 
-        BigInteger publicExp=pubReader.readInt(), modulus=pubReader.readInt();
-        BigInteger privateExp = prvReader.readInt();
-        BigInteger prime1 = prvReader.readInt();
-        BigInteger prime2 = prvReader.readInt();
-        BigInteger crtCoef = prvReader.readInt();
+        BigInteger  p=pubReader.readInt();
+        BigInteger  q=pubReader.readInt();
+        BigInteger  g=pubReader.readInt();
+        @SuppressWarnings("unused")
+        BigInteger  y=pubReader.readInt();  // don't need it, but have to read it to get to x
+        BigInteger  x=prvReader.readInt();
 
-        BigInteger exp1 = privateExp.mod(prime1.subtract(BigInteger.ONE));
-        BigInteger exp2 = privateExp.mod(prime2.subtract(BigInteger.ONE));
 
         try {
-            return generatePrivateKey(new RSAPrivateCrtKeySpec(modulus, publicExp, privateExp, prime1, prime2, exp1, exp2, crtCoef));
+            return generatePrivateKey(new DSAPrivateKeySpec(x, p, q, g));
         } catch(GeneralSecurityException e) {
             throw new IOException("Failed (" + e.getClass().getSimpleName() + ") to generate key: " + e.getMessage(), e);
         }

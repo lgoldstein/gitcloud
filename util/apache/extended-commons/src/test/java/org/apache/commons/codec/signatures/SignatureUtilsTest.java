@@ -25,8 +25,8 @@ import java.security.PrivateKey;
 
 import org.apache.commons.io.ExtendedFileUtils;
 import org.apache.commons.lang3.ExtendedClassUtils;
-import org.apache.commons.net.ssh.keys.DSSKeyDecoder;
-import org.apache.commons.net.ssh.keys.RSAKeyDecoder;
+import org.apache.commons.net.ssh.keys.dss.DSSKeyDecoder;
+import org.apache.commons.net.ssh.keys.rsa.RSAKeyDecoder;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
