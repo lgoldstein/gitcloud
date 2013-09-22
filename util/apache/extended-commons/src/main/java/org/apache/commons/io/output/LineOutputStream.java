@@ -125,7 +125,7 @@ public abstract class LineOutputStream extends OutputStream implements LineLevel
         
         _decoder.reset();
         CoderResult res=_decoder.decode(bb, cc, true);
-        if (res.isError() || res.isMalformed() || res.isOverflow() || res.isUnmappable()) {
+        if (res.isError()) {
             throw new StreamCorruptedException("Failed to decode line bytes: " + res);
         }
         

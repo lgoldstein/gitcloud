@@ -24,6 +24,7 @@ import java.nio.channels.Channel;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 
+import org.apache.commons.io.output.AsciiLineOutputStream;
 import org.apache.commons.io.output.LineLevelAppender;
 import org.apache.commons.io.output.LineOutputStream;
 import org.apache.commons.lang3.ArrayUtils;
@@ -40,6 +41,36 @@ public abstract class LineInputStream extends FilterInputStream implements LineL
 
     protected LineInputStream(InputStream input) {
         this(input, Charset.defaultCharset());
+    }
+
+    protected LineInputStream(InputStream input, boolean useAscii) {
+        super(Validate.notNull(input, "No input", ArrayUtils.EMPTY_OBJECT_ARRAY));
+
+        if (useAscii) {
+            _output = new AsciiLineOutputStream() {
+                @Override
+                public void writeLineData(CharSequence lineData) throws IOException {
+                    LineInputStream.this.writeLineData(lineData);
+                }
+                
+                @Override
+                public boolean isWriteEnabled() {
+                    return LineInputStream.this.isWriteEnabled();
+                }
+            };
+        } else {
+            _output = new LineOutputStream() {
+                @Override
+                public void writeLineData(CharSequence lineData) throws IOException {
+                    LineInputStream.this.writeLineData(lineData);
+                }
+                
+                @Override
+                public boolean isWriteEnabled() {
+                    return LineInputStream.this.isWriteEnabled();
+                }
+            };
+        }
     }
 
     protected LineInputStream(InputStream input, String charset) {

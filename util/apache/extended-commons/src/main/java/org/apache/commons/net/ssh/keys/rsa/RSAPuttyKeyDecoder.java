@@ -23,7 +23,6 @@ import java.security.PrivateKey;
 import java.security.spec.RSAPrivateCrtKeySpec;
 
 import org.apache.commons.net.ssh.keys.putty.AbstractPuttyKeyDecoder;
-import org.apache.commons.net.ssh.keys.putty.AbstractPuttyKeyDecoder.PuttyKeyReader;
 
 /**
  * @author Lyor G.

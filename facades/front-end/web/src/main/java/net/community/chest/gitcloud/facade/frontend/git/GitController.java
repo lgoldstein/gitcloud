@@ -14,6 +14,8 @@
  */
 package net.community.chest.gitcloud.facade.frontend.git;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -29,13 +31,17 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
+import java.util.zip.GZIPInputStream;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.collections15.ExtendedCollectionUtils;
+import org.apache.commons.io.ExtendedIOUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.output.AsciiLineOutputStream;
+import org.apache.commons.io.output.TeeOutputStream;
 import org.apache.commons.lang3.ExtendedCharSequenceUtils;
 import org.apache.commons.lang3.ExtendedValidate;
 import org.apache.commons.lang3.StringUtils;
@@ -73,7 +79,7 @@ public class GitController extends RefreshedContextAttacher {
         serveRequest(RequestMethod.POST, req, rsp);
     }
 
-    private void serveRequest(RequestMethod method, HttpServletRequest req, HttpServletResponse rsp) throws IOException {
+    private void serveRequest(final RequestMethod method, final HttpServletRequest req, HttpServletResponse rsp) throws IOException {
         if (logger.isDebugEnabled()) {
             logger.debug("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]");
         }
@@ -90,6 +96,22 @@ public class GitController extends RefreshedContextAttacher {
                 InputStream postData=req.getInputStream();
                 try {
                     OutputStream    postTarget=conn.getOutputStream();
+                    if (logger.isTraceEnabled()) {
+                        postTarget = new TeeOutputStream(postTarget, new AsciiLineOutputStream() {
+                            @Override
+                            @SuppressWarnings("synthetic-access")
+                            public void writeLineData(CharSequence lineData) throws IOException {
+                                logger.trace("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                           + " C: " + lineData);
+                            }
+                            
+                            @Override
+                            public boolean isWriteEnabled() {
+                                return true;
+                            }
+                        });
+                    }
+
                     try {
                         long    cpyLen=IOUtils.copyLarge(postData, postTarget);
                         if (logger.isTraceEnabled()) {
@@ -114,20 +136,50 @@ public class GitController extends RefreshedContextAttacher {
             } else {
                 rsp.sendError(statusCode);
                 
-                copyResponseHeadersValues(conn, rsp);
-
+                Map<String,String>  rspHeaders=copyResponseHeadersValues(conn, rsp);
                 if (RequestMethod.GET.equals(method)) {
                     InputStream rspData=conn.getInputStream();
                     try {
-                        OutputStream    rspTarget=rsp.getOutputStream();
+                        ByteArrayOutputStream bytesStream=null;
+                        OutputStream    rspTarget=rsp.getOutputStream(), logStream=null;
+                        String          encoding=rspHeaders.get("Content-Encoding");
+                        if (logger.isTraceEnabled()) {
+                            logStream = new AsciiLineOutputStream() {
+                                    @Override
+                                    @SuppressWarnings("synthetic-access")
+                                    public void writeLineData(CharSequence lineData) throws IOException {
+                                        logger.trace("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                                   + " S: " + lineData);
+                                    }
+                                    
+                                    @Override
+                                    public boolean isWriteEnabled() {
+                                        return true;
+                                    }
+                                };
+                            if ("gzip".equalsIgnoreCase(encoding)) {
+                                bytesStream = new ByteArrayOutputStream();
+                            }
+                            rspTarget = new TeeOutputStream(rspTarget, (bytesStream == null) ? logStream : bytesStream);
+                        }
+
                         try {
                             long    cpyLen=IOUtils.copyLarge(rspData, rspTarget);
                             if (logger.isTraceEnabled()) {
                                 logger.trace("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                                            + " copied " + cpyLen + " bytes from " + url.toExternalForm());
+                                
+                                if (bytesStream != null) {
+                                    InputStream gzStream=new GZIPInputStream(new ByteArrayInputStream(bytesStream.toByteArray()));
+                                    try {
+                                        IOUtils.copyLarge(gzStream, logStream);
+                                    } finally {
+                                        gzStream.close();
+                                    }
+                                }
                             }
                         } finally {
-                            rspTarget.close();
+                            ExtendedIOUtils.closeAll(rspTarget, logStream, bytesStream);
                         }
                     } finally {
                         rspData.close();

@@ -14,12 +14,20 @@
  */
 package net.community.chest.gitcloud.facade.backend.git;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
 
 import net.community.chest.gitcloud.facade.git.PackFactory;
 
+import org.apache.commons.io.input.CloseShieldInputStream;
+import org.apache.commons.io.input.LineInputStream;
+import org.apache.commons.io.output.AsciiLineOutputStream;
+import org.apache.commons.io.output.CloseShieldOutputStream;
+import org.apache.commons.io.output.TeeOutputStream;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.ReceivePack;
 import org.eclipse.jgit.transport.resolver.ReceivePackFactory;
@@ -71,7 +79,49 @@ public class BackendReceivePackFactory<C> extends PackFactory<C> implements Rece
             logger.debug("ReceivePack(" + db.getDirectory() + ")");
         }
 
-        ReceivePack receive=new ReceivePack(db);
+        ReceivePack receive=new ReceivePack(db) {
+            @Override
+            @SuppressWarnings("synthetic-access")
+            public void receive(InputStream input, OutputStream output, OutputStream messages) throws IOException {
+                if (logger.isTraceEnabled()) {
+                    InputStream effIn=new LineInputStream(new CloseShieldInputStream(input), true) {
+                            @Override
+                            public void writeLineData(CharSequence lineData) throws IOException {
+                                logger.trace("C: " + lineData);
+                            }
+                            
+                            @Override
+                            public boolean isWriteEnabled() {
+                                return true;
+                            }
+                        };
+                    try {
+                        OutputStream    effOut=
+                                new TeeOutputStream(
+                                        new CloseShieldOutputStream(output), new AsciiLineOutputStream() {
+                                            @Override
+                                            public void writeLineData(CharSequence lineData) throws IOException {
+                                                logger.trace("S: " + lineData);
+                                            }
+                                            
+                                            @Override
+                                            public boolean isWriteEnabled() {
+                                                return true;
+                                            }
+                                        });
+                        try {
+                            super.receive(effIn, effOut, messages);
+                        } finally {
+                            effOut.close();
+                        }
+                    } finally {
+                        effIn.close();
+                    }
+                } else {
+                    super.receive(input, output, messages);
+                }
+            }
+        };
         receive.setTimeout(receiveTimeoutValue);
         
         // TODO set pushing user identity for reflog

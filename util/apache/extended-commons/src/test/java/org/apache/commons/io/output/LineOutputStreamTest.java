@@ -37,23 +37,44 @@ public class LineOutputStreamTest extends AbstractTestSupport {
     }
 
     @Test
-    public void testStreamCorrectness() throws IOException {
+    public void testLineOutputStream() throws IOException {
+        testStreamCorrectness(false);
+    }
+    
+    @Test
+    public void testAsciiLineOutputStream() throws IOException {
+        testStreamCorrectness(true);
+    }
+    
+    private void testStreamCorrectness(boolean useAsciiStream) throws IOException {
         File    file=getTestJavaSourceFile();
         assertNotNull("Cannot locate test file", file);
         
         List<String>        expected=FileUtils.readLines(file);
         final List<String>  actual=new ArrayList<String>(expected.size());
-        OutputStream        output=new LineOutputStream() {
-                @Override
-                public void writeLineData(CharSequence lineData) throws IOException {
-                    actual.add(lineData.toString());
-                }
-                
-                @Override
-                public boolean isWriteEnabled() {
-                    return true;
-                }
-            };
+        OutputStream        output=useAsciiStream
+                ? new AsciiLineOutputStream() {
+                        @Override
+                        public void writeLineData(CharSequence lineData) throws IOException {
+                            actual.add(lineData.toString());
+                        }
+                        
+                        @Override
+                        public boolean isWriteEnabled() {
+                            return true;
+                        }
+                    }
+                : new LineOutputStream() {
+                    @Override
+                    public void writeLineData(CharSequence lineData) throws IOException {
+                        actual.add(lineData.toString());
+                    }
+                    
+                    @Override
+                    public boolean isWriteEnabled() {
+                        return true;
+                    }
+                };
         try {
             long    cpySize=FileUtils.copyFile(file, output);
             assertEquals("Mismatched copy size for " + file, file.length(), cpySize);

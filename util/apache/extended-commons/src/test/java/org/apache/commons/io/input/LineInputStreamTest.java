@@ -42,23 +42,32 @@ public class LineInputStreamTest extends AbstractTestSupport {
     }
 
     @Test
-    public void testStreamCorrectness() throws IOException {
+    public void testLineInputStream() throws IOException {
+        testStreamCorrectness(false);
+    }
+
+    @Test
+    public void testAsciiLineInputStream() throws IOException {
+        testStreamCorrectness(true);
+    }
+
+    private void testStreamCorrectness(boolean useAscii) throws IOException {
         File    file=getTestJavaSourceFile();
         assertNotNull("Cannot locate test file", file);
-        
+
         List<String>        expected=FileUtils.readLines(file);
         final List<String>  actual=new ArrayList<String>(expected.size());
-        LineInputStream     input=new LineInputStream(new FileInputStream(file)) {
-                @Override
-                public void writeLineData(CharSequence lineData) throws IOException {
-                    actual.add(lineData.toString());
-                }
-                
-                @Override
-                public boolean isWriteEnabled() {
-                    return true;
-                }
-            };
+        LineInputStream     input=new LineInputStream(new FileInputStream(file), useAscii) {
+                    @Override
+                    public void writeLineData(CharSequence lineData) throws IOException {
+                        actual.add(lineData.toString());
+                    }
+                    
+                    @Override
+                    public boolean isWriteEnabled() {
+                        return true;
+                    }
+                };
         try {
             long    cpySize=IOUtils.copyLarge(input, NullOutputStream.NULL_OUTPUT_STREAM);
             assertEquals("Mismatched copy size for " + file, file.length(), cpySize);
