@@ -245,7 +245,7 @@ public class GitController extends RefreshedContextAttacher {
     private Map<String,String> copyRequestHeadersValues(HttpServletRequest req, HttpURLConnection conn) {
         Map<String,String>  hdrsValues=new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
         for (Enumeration<String> hdrs=req.getHeaderNames(); (hdrs != null) && hdrs.hasMoreElements(); ) {
-            String  hdrName=hdrs.nextElement(), hdrValue=req.getHeader(hdrName);
+            String  hdrName=capitalizeHttpHeaderName(hdrs.nextElement()), hdrValue=req.getHeader(hdrName);
             if (StringUtils.isEmpty(hdrValue)) {
                 continue;
             }
