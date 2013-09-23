@@ -213,37 +213,7 @@ public class GitController extends RefreshedContextAttacher {
         HttpURLConnection   conn=openTargetConnection(method, url, req);
         try {
             if (RequestMethod.POST.equals(method)) {
-                InputStream postData=req.getInputStream();
-                try {
-                    OutputStream    postTarget=conn.getOutputStream();
-                    if (logger.isTraceEnabled()) {
-                        postTarget = new TeeOutputStream(postTarget, new AsciiLineOutputStream() {
-                            @Override
-                            @SuppressWarnings("synthetic-access")
-                            public void writeLineData(CharSequence lineData) throws IOException {
-                                logger.trace("executeRemoteRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                                           + " C: " + lineData);
-                            }
-                            
-                            @Override
-                            public boolean isWriteEnabled() {
-                                return true;
-                            }
-                        });
-                    }
-
-                    try {
-                        long    cpyLen=IOUtils.copyLarge(postData, postTarget);
-                        if (logger.isTraceEnabled()) {
-                            logger.trace("executeRemoteRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                                       + " copied " + cpyLen + " bytes to " + url.toExternalForm());
-                        }
-                    } finally {
-                        postTarget.close();
-                    }
-                } finally {
-                    postData.close();
-                }
+                transferPostedData(method, req, conn);
             }
             
             int statusCode=conn.getResponseCode();
@@ -255,59 +225,101 @@ public class GitController extends RefreshedContextAttacher {
                 rsp.sendError(statusCode, rspMsg);
             } else {
                 rsp.sendError(statusCode);
-                
+
                 Map<String,String>  rspHeaders=copyResponseHeadersValues(conn, rsp);
                 if (RequestMethod.GET.equals(method)) {
-                    InputStream rspData=conn.getInputStream();
-                    try {
-                        ByteArrayOutputStream bytesStream=null;
-                        OutputStream    rspTarget=rsp.getOutputStream(), logStream=null;
-                        String          encoding=rspHeaders.get("Content-Encoding");
-                        if (logger.isTraceEnabled()) {
-                            logStream = new AsciiLineOutputStream() {
-                                    @Override
-                                    @SuppressWarnings("synthetic-access")
-                                    public void writeLineData(CharSequence lineData) throws IOException {
-                                        logger.trace("executeRemoteRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                                                   + " S: " + lineData);
-                                    }
-                                    
-                                    @Override
-                                    public boolean isWriteEnabled() {
-                                        return true;
-                                    }
-                                };
-                            if ("gzip".equalsIgnoreCase(encoding)) {
-                                bytesStream = new ByteArrayOutputStream();
-                            }
-                            rspTarget = new TeeOutputStream(rspTarget, (bytesStream == null) ? logStream : bytesStream);
-                        }
-
-                        try {
-                            long    cpyLen=IOUtils.copyLarge(rspData, rspTarget);
-                            if (logger.isTraceEnabled()) {
-                                logger.trace("executeRemoteRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                                           + " copied " + cpyLen + " bytes from " + url.toExternalForm());
-                                
-                                if (bytesStream != null) {
-                                    InputStream gzStream=new GZIPInputStream(new ByteArrayInputStream(bytesStream.toByteArray()));
-                                    try {
-                                        IOUtils.copyLarge(gzStream, logStream);
-                                    } finally {
-                                        gzStream.close();
-                                    }
-                                }
-                            }
-                        } finally {
-                            ExtendedIOUtils.closeAll(rspTarget, logStream, bytesStream);
-                        }
-                    } finally {
-                        rspData.close();
-                    }
+                    transferBackendResponse(method, req, rsp, conn, rspHeaders);
                 }
             }
         } finally {
             conn.disconnect();
+        }
+    }
+
+    private void transferPostedData(final RequestMethod method, final HttpServletRequest req, HttpURLConnection conn) throws IOException {
+        InputStream postData=req.getInputStream();
+        try {
+            OutputStream    postTarget=conn.getOutputStream();
+            if (logger.isTraceEnabled()) {
+                postTarget = new TeeOutputStream(postTarget, new AsciiLineOutputStream() {
+                    @Override
+                    @SuppressWarnings("synthetic-access")
+                    public void writeLineData(CharSequence lineData) throws IOException {
+                        logger.trace("transferPostedData(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                   + " C: " + lineData);
+                    }
+
+                    @Override
+                    public boolean isWriteEnabled() {
+                        return true;
+                    }
+                });
+            }
+
+            try {
+                long    cpyLen=IOUtils.copyLarge(postData, postTarget);
+                if (logger.isTraceEnabled()) {
+                    final URL   url=conn.getURL();
+                    logger.trace("transferPostedData(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                               + " copied " + cpyLen + " bytes to " + url.toExternalForm());
+                }
+            } finally {
+                postTarget.close();
+            }
+        } finally {
+            postData.close();
+        }
+    }
+
+    private void transferBackendResponse(
+            final RequestMethod method, final HttpServletRequest req, HttpServletResponse rsp, HttpURLConnection conn, Map<String,String>  rspHeaders)
+                    throws IOException {
+        InputStream rspData=conn.getInputStream();
+        try {
+            ByteArrayOutputStream   bytesStream=null;
+            OutputStream            rspTarget=rsp.getOutputStream(), logStream=null;
+            String                  encoding=rspHeaders.get("Content-Encoding");
+            if (logger.isTraceEnabled()) {
+                logStream = new AsciiLineOutputStream() {
+                        @Override
+                        @SuppressWarnings("synthetic-access")
+                        public void writeLineData(CharSequence lineData) throws IOException {
+                            logger.trace("transferBackendResponse(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                       + " S: " + lineData);
+                        }
+
+                        @Override
+                        public boolean isWriteEnabled() {
+                            return true;
+                        }
+                    };
+                if ("gzip".equalsIgnoreCase(encoding)) {
+                    bytesStream = new ByteArrayOutputStream();
+                }
+                rspTarget = new TeeOutputStream(rspTarget, (bytesStream == null) ? logStream : bytesStream);
+            }
+
+            try {
+                long    cpyLen=IOUtils.copyLarge(rspData, rspTarget);
+                if (logger.isTraceEnabled()) {
+                    URL url=conn.getURL();
+                    logger.trace("transferBackendResponse(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                               + " copied " + cpyLen + " bytes from " + url.toExternalForm());
+                    
+                    if (bytesStream != null) {
+                        InputStream gzStream=new GZIPInputStream(new ByteArrayInputStream(bytesStream.toByteArray()));
+                        try {
+                            IOUtils.copyLarge(gzStream, logStream);
+                        } finally {
+                            gzStream.close();
+                        }
+                    }
+                }
+            } finally {
+                ExtendedIOUtils.closeAll(rspTarget, logStream, bytesStream);
+            }
+        } finally {
+            rspData.close();
         }
     }
 
