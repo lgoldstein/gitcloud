@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.zip.GZIPInputStream;
 
@@ -71,27 +70,60 @@ import org.springframework.web.bind.annotation.RequestMethod;
  * @author Lyor Goldstein
  * @since Sep 12, 2013 1:17:34 PM
  */
-@Controller
+@Controller // TODO make it a @ManagedObject and expose internal configuration values for JMX management (Read/Write)
 public class GitController extends RefreshedContextAttacher {
     public static final Set<String> ALLOWED_SERVICES=
             Collections.unmodifiableSet(
                     new TreeSet<String>(
                             Arrays.asList(GitSmartHttpTools.UPLOAD_PACK, GitSmartHttpTools.RECEIVE_PACK)));
     public static final String  LOOP_DETECT_TIMEOUT="gitcloud.frontend.git.controller.loop.detect.timeout";
+        public static final long    DEFAULT_LOOP_DETECT_TIMEOUT=0L; // disabled
         private static final String LOOP_DETECT_TIMEOUT_VALUE=SystemPropertyUtils.PLACEHOLDER_PREFIX
                                             + LOOP_DETECT_TIMEOUT
                                             + SystemPropertyUtils.VALUE_SEPARATOR
-                                            + 0L
+                                            + DEFAULT_LOOP_DETECT_TIMEOUT
+                                            + SystemPropertyUtils.PLACEHOLDER_SUFFIX;
+    public static final String  URL_REDIRECT_CONNECT_TIMEOUT="gitcloud.frontend.git.controller.url.redirect.conn.timeout";
+        public static final int DEFAULT_URL_REDIRECT_CONNECT_TIMEOUT=5 * 1000;  // msec.
+        private static final String URL_REDIRECT_CONNECT_TIMEOUT_VALUE=SystemPropertyUtils.PLACEHOLDER_PREFIX
+                                            + URL_REDIRECT_CONNECT_TIMEOUT
+                                            + SystemPropertyUtils.VALUE_SEPARATOR
+                                            + DEFAULT_URL_REDIRECT_CONNECT_TIMEOUT
+                                            + SystemPropertyUtils.PLACEHOLDER_SUFFIX;
+    public static final String  URL_REDIRECT_READ_TIMEOUT="gitcloud.frontend.git.controller.url.redirect.read.timeout";
+        public static final int DEFAULT_URL_REDIRECT_READ_TIMEOUT=30 * 1000;  // msec.
+        private static final String URL_REDIRECT_READ_TIMEOUT_VALUE=SystemPropertyUtils.PLACEHOLDER_PREFIX
+                                            + URL_REDIRECT_READ_TIMEOUT
+                                            + SystemPropertyUtils.VALUE_SEPARATOR
+                                            + DEFAULT_URL_REDIRECT_READ_TIMEOUT
                                             + SystemPropertyUtils.PLACEHOLDER_SUFFIX;
 
     private final MBeanServer   mbeanServer;
     private final long  loopRetryTimeout;
+    private final int   urlRedirectConnectTimeout, urlRedirectReadTimeout;
     private volatile long    initTimestamp=System.currentTimeMillis();
     private volatile boolean    loopDetected;
 
     @Inject
-    public GitController(MBeanServer localMbeanServer, @Value(LOOP_DETECT_TIMEOUT_VALUE) long loopDetectTimeout) {
+    public GitController(MBeanServer localMbeanServer,
+            @Value(LOOP_DETECT_TIMEOUT_VALUE) long loopDetectTimeout,
+            @Value(URL_REDIRECT_CONNECT_TIMEOUT_VALUE) int redirectConnectTimeout,
+            @Value(URL_REDIRECT_READ_TIMEOUT_VALUE) int redirectReadTimeout) {
         mbeanServer = Validate.notNull(localMbeanServer, "No MBean server", ArrayUtils.EMPTY_OBJECT_ARRAY);
+        loopRetryTimeout = loopDetectTimeout;
+        
+        Validate.isTrue(redirectConnectTimeout > 0, "Invalid URL redirect connect timeout: %d", redirectConnectTimeout);
+        urlRedirectConnectTimeout = redirectConnectTimeout;
+
+        Validate.isTrue(redirectReadTimeout > 0, "Invalid URL redirect read timeout: %d", redirectReadTimeout);
+        urlRedirectReadTimeout = redirectReadTimeout;
+    }
+
+    @Override
+    protected void onContextInitialized(ApplicationContext context) {
+        super.onContextInitialized(context);
+        initTimestamp = System.currentTimeMillis();
+
         logger.info("MBeanServer default domain: " + mbeanServer.getDefaultDomain());
         
         String[]    domains=mbeanServer.getDomains();
@@ -100,14 +132,6 @@ public class GitController extends RefreshedContextAttacher {
                 logger.info("MBeanServer extra domain: " + d);
             }
         }
-        
-        loopRetryTimeout = loopDetectTimeout;
-    }
-
-    @Override
-    protected void onContextInitialized(ApplicationContext context) {
-        super.onContextInitialized(context);
-        initTimestamp = System.currentTimeMillis();
     }
 
     @RequestMapping(method=RequestMethod.GET)
@@ -125,13 +149,7 @@ public class GitController extends RefreshedContextAttacher {
             logger.debug("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]");
         }
 
-        URL url=resolveTargetRepository(method, req);
-        if (logger.isDebugEnabled()) {
-            logger.debug("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                       + " redirected to " + url.toExternalForm());
-        }
-
-        if ((loopRetryTimeout > 0) && (!loopDetected)) {
+        if ((loopRetryTimeout > 0L) && (!loopDetected)) {
             long    now=System.currentTimeMillis(), diff=now - initTimestamp;
             if ((diff > 0L) && (diff < loopRetryTimeout)) {
                 try {
@@ -151,17 +169,20 @@ public class GitController extends RefreshedContextAttacher {
                 }
             }
         }
-        
+
         /*
          * NOTE: this feature requires enabling cross-context forwarding.
          * In Tomcat, the 'crossContext' attribute in 'Context' element of
          * 'TOMCAT_HOME\conf\context.xml' must be set to true, to enable cross-context 
          */
+        URL url=resolveTargetRepository(method, req);
         if (loopDetected) {
+            // TODO see if can find a more efficient way than splitting and re-constructing
             ServletContext  curContext=req.getServletContext();
             String          urlPath=url.getPath(), urlQuery=url.getQuery();
             String[]        comps=StringUtils.split(urlPath, '/');
-            ServletContext  loopContext=Validate.notNull(curContext.getContext("/" + comps[0]), "No cross-context for %s", comps[0]);
+            String          appName=comps[0];
+            ServletContext  loopContext=Validate.notNull(curContext.getContext("/" + appName), "No cross-context for %s", appName);
             // build the relative path in the re-directed context
             StringBuilder   sb=new StringBuilder(urlPath.length() + 1 + (StringUtils.isEmpty(urlQuery) ? 0 : urlQuery.length()));
             for (int index=1; index < comps.length; index++) {
@@ -174,12 +195,21 @@ public class GitController extends RefreshedContextAttacher {
             String              redirectPath=sb.toString();
             RequestDispatcher   dispatcher=Validate.notNull(loopContext.getRequestDispatcher(redirectPath), "No dispatcher for %s", redirectPath);
             dispatcher.forward(req, rsp);
+            if (logger.isDebugEnabled()) {
+                logger.debug("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                           + " forwarded to " + loopContext.getContextPath() + "/" + redirectPath);
+            }
         } else {
             executeRemoteRequest(method, url, req, rsp);
         }
     }
     
     private void executeRemoteRequest(final RequestMethod method, URL url, final HttpServletRequest req, HttpServletResponse rsp) throws IOException {
+        if (logger.isDebugEnabled()) {
+            logger.debug("executeRemoteRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                       + " redirected to " + url.toExternalForm());
+        }
+
         HttpURLConnection   conn=openTargetConnection(method, url, req);
         try {
             if (RequestMethod.POST.equals(method)) {
@@ -280,6 +310,7 @@ public class GitController extends RefreshedContextAttacher {
             conn.disconnect();
         }
     }
+
     private URL resolveTargetRepository(RequestMethod method, HttpServletRequest req) throws IOException {
         String  op=null, uriPath=req.getPathInfo();
         if (RequestMethod.GET.equals(method)) {
@@ -290,6 +321,7 @@ public class GitController extends RefreshedContextAttacher {
                 op = uriPath.substring(pos + 1);
             }
         }
+
         if (!StringUtils.isEmpty(op)) {
             ExtendedValidate.isTrue(ALLOWED_SERVICES.contains(op), "Unsupported service: %s", op);
         }
@@ -297,10 +329,11 @@ public class GitController extends RefreshedContextAttacher {
         String repoName=extractRepositoryName(uriPath);
         if (StringUtils.isEmpty(repoName)) {
             throw ExtendedLogUtils.thrownLogging(logger, Level.WARNING,
-                                                 "resolveTargetRepository(" + uriPath + ")",
-                                                 new IllegalArgumentException("Failed to extract repo name from " + uriPath));
+                         "resolveTargetRepository(" + uriPath + ")",
+                         new IllegalArgumentException("Failed to extract repo name from " + uriPath));
         }
 
+        // TODO access an injected resolver that returns the back-end location URL
         String  query=req.getQueryString();
         if (StringUtils.isEmpty(query)) {
             return new URL("http://localhost:8080/git-backend/git" + uriPath);
@@ -318,8 +351,8 @@ public class GitController extends RefreshedContextAttacher {
             https.setSSLSocketFactory(SSLUtils.ACCEPT_ALL_FACTORY.create());
         }
 
-        conn.setConnectTimeout((int) TimeUnit.SECONDS.toMillis(5L));    // TODO inject from configuration
-        conn.setReadTimeout((int) TimeUnit.SECONDS.toMillis(30L));    // TODO inject from configuration
+        conn.setConnectTimeout(urlRedirectConnectTimeout);
+        conn.setReadTimeout(urlRedirectReadTimeout);
         conn.setRequestMethod(method.name());
         
         if (RequestMethod.POST.equals(method)) {
