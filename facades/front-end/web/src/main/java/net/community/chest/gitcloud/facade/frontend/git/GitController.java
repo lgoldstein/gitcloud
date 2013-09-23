@@ -212,8 +212,9 @@ public class GitController extends RefreshedContextAttacher {
 
         HttpURLConnection   conn=openTargetConnection(method, url, req);
         try {
+            Map<String,String>  reqHeaders=copyRequestHeadersValues(req, conn);
             if (RequestMethod.POST.equals(method)) {
-                transferPostedData(method, req, conn);
+                transferPostedData(method, req, conn, reqHeaders);
             }
             
             int statusCode=conn.getResponseCode();
@@ -236,24 +237,34 @@ public class GitController extends RefreshedContextAttacher {
         }
     }
 
-    private void transferPostedData(final RequestMethod method, final HttpServletRequest req, HttpURLConnection conn) throws IOException {
+    private void transferPostedData(
+                final RequestMethod method, final HttpServletRequest req, HttpURLConnection conn, Map<String,String> reqHeaders)
+            throws IOException {
         InputStream postData=req.getInputStream();
         try {
-            OutputStream    postTarget=conn.getOutputStream();
+            ByteArrayOutputStream   bytesStream=null;
+            OutputStream            postTarget=conn.getOutputStream(), logStream=null;
+            String                  encoding=reqHeaders.get("Content-Encoding");
             if (logger.isTraceEnabled()) {
-                postTarget = new TeeOutputStream(postTarget, new AsciiLineOutputStream() {
-                    @Override
-                    @SuppressWarnings("synthetic-access")
-                    public void writeLineData(CharSequence lineData) throws IOException {
-                        logger.trace("transferPostedData(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                                   + " C: " + lineData);
-                    }
+                logStream = new AsciiLineOutputStream() {
+                        @Override
+                        @SuppressWarnings("synthetic-access")
+                        public void writeLineData(CharSequence lineData) throws IOException {
+                            logger.trace("transferPostedData(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                       + " C: " + lineData);
+                        }
+    
+                        @Override
+                        public boolean isWriteEnabled() {
+                            return true;
+                        }
+                    };
+                    
+                if ("gzip".equalsIgnoreCase(encoding)) {
+                    bytesStream = new ByteArrayOutputStream();
+                }
 
-                    @Override
-                    public boolean isWriteEnabled() {
-                        return true;
-                    }
-                });
+                postTarget = new TeeOutputStream(postTarget, (bytesStream == null) ? logStream : bytesStream);
             }
 
             try {
@@ -262,9 +273,18 @@ public class GitController extends RefreshedContextAttacher {
                     final URL   url=conn.getURL();
                     logger.trace("transferPostedData(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                                + " copied " + cpyLen + " bytes to " + url.toExternalForm());
+
+                    if (bytesStream != null) {
+                        InputStream gzStream=new GZIPInputStream(new ByteArrayInputStream(bytesStream.toByteArray()));
+                        try {
+                            IOUtils.copyLarge(gzStream, logStream);
+                        } finally {
+                            gzStream.close();
+                        }
+                    }
                 }
             } finally {
-                postTarget.close();
+                ExtendedIOUtils.closeAll(postTarget, logStream, bytesStream);
             }
         } finally {
             postData.close();
@@ -371,7 +391,6 @@ public class GitController extends RefreshedContextAttacher {
             conn.setDoOutput(true);
         }
 
-        copyRequestHeadersValues(req, conn);
         return conn;
     }
 
