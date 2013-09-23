@@ -149,29 +149,39 @@ public class BackendUploadPackFactory<C> extends PackFactory<C> implements Uploa
                 @SuppressWarnings("synthetic-access")
                 public void sendAdvertisedRefs(RefAdvertiser adv) throws IOException, ServiceMayNotContinueException {
                     if (logger.isTraceEnabled() && (adv instanceof PacketLineOutRefAdvertiser)) {
-                        PacketLineOut   pckOut=(PacketLineOut) ReflectionUtils.getField(pckOutField, adv);
-                        PacketLineOutRefAdvertiser  repAdv=new PacketLineOutRefAdvertiser(pckOut) {
+                        final OutputStream    logStream=new AsciiLineOutputStream() {
                                 @Override
-                                protected void writeOne(CharSequence line) throws IOException {
-                                    super.writeOne(line);
-                                    
-                                    int ll=line.length();
-                                    for ( ; ll > 0; ll--) {
-                                        char    ch=line.charAt(ll - 1);
-                                        if ((ch != '\r') && (ch != '\n')) {
-                                            break;
-                                        }
-                                    }
-                                    logger.trace(logPrefix + " sendAdvertisedRefs: " + line.subSequence(0, ll));
+                                public void writeLineData(CharSequence lineData) throws IOException {
+                                    logger.trace(logPrefix + " S: " + lineData);
                                 }
-    
+                                
                                 @Override
-                                protected void end() throws IOException {
-                                    super.end();
-                                    logger.trace(logPrefix + " sendAdvertisedRefs: END");
+                                public boolean isWriteEnabled() {
+                                    return true;
                                 }
                             };
-                        super.sendAdvertisedRefs(repAdv);
+                        try {
+                            PacketLineOut       pckOut=(PacketLineOut) ReflectionUtils.getField(pckOutField, adv);
+                            PacketLineOutRefAdvertiser  repAdv=new PacketLineOutRefAdvertiser(pckOut) {
+                                    private final PacketLineOut pckLog=new PacketLineOut(logStream);
+
+                                    @Override
+                                    protected void writeOne(CharSequence line) throws IOException {
+                                        String  s=line.toString();
+                                        super.writeOne(s);
+                                        pckLog.writeString(s);
+                                    }
+        
+                                    @Override
+                                    protected void end() throws IOException {
+                                        super.end();
+                                        pckLog.end();
+                                    }
+                                };
+                            super.sendAdvertisedRefs(repAdv);
+                        } finally {
+                            logStream.close();  // flush any remaining data
+                        }
                     } else {
                         super.sendAdvertisedRefs(adv);
                     }
