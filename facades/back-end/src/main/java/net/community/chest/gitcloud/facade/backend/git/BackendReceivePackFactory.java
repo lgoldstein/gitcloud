@@ -20,6 +20,7 @@ import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
+import javax.servlet.http.HttpServletRequest;
 
 import net.community.chest.gitcloud.facade.git.PackFactory;
 
@@ -73,10 +74,17 @@ public class BackendReceivePackFactory<C> extends PackFactory<C> implements Rece
     }
 
     @Override
-    public ReceivePack create(C req, Repository db)
+    public ReceivePack create(C request, Repository db)
             throws ServiceNotEnabledException, ServiceNotAuthorizedException {
+        final String    logPrefix;
+        if (request instanceof HttpServletRequest) {
+            HttpServletRequest  req=(HttpServletRequest) request;
+            logPrefix = "create(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]";
+        } else {
+            logPrefix = "create(" + db.getDirectory() + ")";
+        }
         if (logger.isDebugEnabled()) {
-            logger.debug("ReceivePack(" + db.getDirectory() + ")");
+            logger.debug(logPrefix + ": " +  db.getDirectory());
         }
 
         ReceivePack receive=new ReceivePack(db) {
@@ -87,7 +95,7 @@ public class BackendReceivePackFactory<C> extends PackFactory<C> implements Rece
                     InputStream effIn=new LineInputStream(new CloseShieldInputStream(input), true) {
                             @Override
                             public void writeLineData(CharSequence lineData) throws IOException {
-                                logger.trace("C: " + lineData);
+                                logger.trace(logPrefix + " receive(C): " + lineData);
                             }
                             
                             @Override
@@ -101,7 +109,7 @@ public class BackendReceivePackFactory<C> extends PackFactory<C> implements Rece
                                         new CloseShieldOutputStream(output), new AsciiLineOutputStream() {
                                             @Override
                                             public void writeLineData(CharSequence lineData) throws IOException {
-                                                logger.trace("S: " + lineData);
+                                                logger.trace(logPrefix + " receive(S): " + lineData);
                                             }
                                             
                                             @Override

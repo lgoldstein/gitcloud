@@ -18,9 +18,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
+import javax.servlet.http.HttpServletRequest;
 
 import net.community.chest.gitcloud.facade.git.PackFactory;
 
@@ -29,7 +31,14 @@ import org.apache.commons.io.input.LineInputStream;
 import org.apache.commons.io.output.AsciiLineOutputStream;
 import org.apache.commons.io.output.CloseShieldOutputStream;
 import org.apache.commons.io.output.TeeOutputStream;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.Validate;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.transport.PacketLineOut;
+import org.eclipse.jgit.transport.RefAdvertiser;
+import org.eclipse.jgit.transport.RefAdvertiser.PacketLineOutRefAdvertiser;
+import org.eclipse.jgit.transport.ServiceMayNotContinueException;
 import org.eclipse.jgit.transport.UploadPack;
 import org.eclipse.jgit.transport.resolver.ServiceNotAuthorizedException;
 import org.eclipse.jgit.transport.resolver.ServiceNotEnabledException;
@@ -37,6 +46,7 @@ import org.eclipse.jgit.transport.resolver.UploadPackFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.util.SystemPropertyUtils;
 
 /**
@@ -53,6 +63,10 @@ public class BackendUploadPackFactory<C> extends PackFactory<C> implements Uploa
                                               + DEFAULT_UPLOAD_TIMEOUT_SEC
                                               + SystemPropertyUtils.PLACEHOLDER_SUFFIX
                                               ;
+    // TODO Add a unit test to ensure field exists in any future version of jgit
+    private static final  Field   pckOutField=
+            Validate.notNull(FieldUtils.getDeclaredField(PacketLineOutRefAdvertiser.class, "pckOut", true), "Missing pckOut file", ArrayUtils.EMPTY_OBJECT_ARRAY);
+
     // we need this subterfuge since the GitBackendServlet has no injection capabilities
     private static final AtomicReference<UploadPackFactory<?>> holder=new AtomicReference<UploadPackFactory<?>>(null);
     @SuppressWarnings("unchecked")
@@ -74,11 +88,18 @@ public class BackendUploadPackFactory<C> extends PackFactory<C> implements Uploa
     }
 
     @Override
-    public UploadPack create(C req, Repository db)
+    public UploadPack create(final C request, Repository db)
             throws ServiceNotEnabledException, ServiceNotAuthorizedException {
-        final File  dir=db.getDirectory();
+        final File      dir=db.getDirectory();
+        final String    logPrefix;
+        if (request instanceof HttpServletRequest) {
+            HttpServletRequest  req=(HttpServletRequest) request;
+            logPrefix = "create(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]";
+        } else {
+            logPrefix = "create(" + dir.getAbsolutePath() + ")";
+        }
         if (logger.isDebugEnabled()) {
-            logger.debug("UploadPack(" + dir + ")");
+            logger.debug(logPrefix + ": " + dir.getAbsolutePath());
         }
 
         UploadPack up = new UploadPack(db) {
@@ -89,7 +110,7 @@ public class BackendUploadPackFactory<C> extends PackFactory<C> implements Uploa
                         InputStream effIn=new LineInputStream(new CloseShieldInputStream(input), true) {
                                 @Override
                                 public void writeLineData(CharSequence lineData) throws IOException {
-                                    logger.trace("C: " + lineData);
+                                    logger.trace(logPrefix + " upload(C): " + lineData);
                                 }
                                 
                                 @Override
@@ -103,7 +124,7 @@ public class BackendUploadPackFactory<C> extends PackFactory<C> implements Uploa
                                             new CloseShieldOutputStream(output), new AsciiLineOutputStream() {
                                                 @Override
                                                 public void writeLineData(CharSequence lineData) throws IOException {
-                                                    logger.trace("S: " + lineData);
+                                                    logger.trace(logPrefix + " upload(S): " + lineData);
                                                 }
                                                 
                                                 @Override
@@ -121,6 +142,38 @@ public class BackendUploadPackFactory<C> extends PackFactory<C> implements Uploa
                         }
                     } else {
                         super.upload(input, output, messages);
+                    }
+                }
+
+                @Override
+                @SuppressWarnings("synthetic-access")
+                public void sendAdvertisedRefs(RefAdvertiser adv) throws IOException, ServiceMayNotContinueException {
+                    if (logger.isTraceEnabled() && (adv instanceof PacketLineOutRefAdvertiser)) {
+                        PacketLineOut   pckOut=(PacketLineOut) ReflectionUtils.getField(pckOutField, adv);
+                        PacketLineOutRefAdvertiser  repAdv=new PacketLineOutRefAdvertiser(pckOut) {
+                                @Override
+                                protected void writeOne(CharSequence line) throws IOException {
+                                    super.writeOne(line);
+                                    
+                                    int ll=line.length();
+                                    for ( ; ll > 0; ll--) {
+                                        char    ch=line.charAt(ll - 1);
+                                        if ((ch != '\r') && (ch != '\n')) {
+                                            break;
+                                        }
+                                    }
+                                    logger.trace(logPrefix + " sendAdvertisedRefs: " + line.subSequence(0, ll));
+                                }
+    
+                                @Override
+                                protected void end() throws IOException {
+                                    super.end();
+                                    logger.trace(logPrefix + " sendAdvertisedRefs: END");
+                                }
+                            };
+                        super.sendAdvertisedRefs(repAdv);
+                    } else {
+                        super.sendAdvertisedRefs(adv);
                     }
                 }
             };

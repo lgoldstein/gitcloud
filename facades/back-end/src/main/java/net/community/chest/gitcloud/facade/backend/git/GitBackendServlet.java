@@ -68,13 +68,13 @@ public class GitBackendServlet extends GitServlet {
     protected void service(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
         if (logger.isDebugEnabled()) {
-            logger.debug("service(" + req.getMethod() + ")[" + req.getPathInfo() + "][" + req.getQueryString() + "]");
+            logger.debug("service(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]");
         }
         
         if (logger.isTraceEnabled()) {
             for (Enumeration<String> hdrs=req.getHeaderNames(); (hdrs != null) && hdrs.hasMoreElements(); ) {
                 String  hdrName=hdrs.nextElement(), hdrValue=req.getHeader(hdrName);
-                logger.trace("service(" + req.getMethod() + ")[" + req.getPathInfo() + "][" + req.getQueryString() + "]"
+                logger.trace("service(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                            + " REQ " + hdrName + ": " + hdrValue);
             }
         }
@@ -82,14 +82,14 @@ public class GitBackendServlet extends GitServlet {
         super.service(req, res);
         
         if (logger.isDebugEnabled()) {
-            logger.debug("service(" + req.getMethod() + ")[" + req.getPathInfo() + "][" + req.getQueryString() + "]"
+            logger.debug("service(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                        + " Content-Type: " + res.getContentType() + ", status=" + res.getStatus());
         }
         
         if (logger.isTraceEnabled()) {
             for (String hdrName : res.getHeaderNames()) {
                 String  hdrValue=res.getHeader(hdrName);
-                logger.trace("service(" + req.getMethod() + ")[" + req.getPathInfo() + "][" + req.getQueryString() + "]"
+                logger.trace("service(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                            + " RSP " + hdrName + ": " + hdrValue);
             }
         }
