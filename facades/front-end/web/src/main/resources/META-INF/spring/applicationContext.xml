@@ -24,10 +24,17 @@
         system-properties-mode="ENVIRONMENT"
         ignore-unresolvable="false"
       />
+        <!-- workaround for https://jira.springsource.org/browse/SPR-10907 -->
+    <util:properties id="gitcloud-frontend-properties" location="file:${gitcloud.base}${file.separator}conf${file.separator}gitcloud-frontend.properties"/>
 
     <context:annotation-config />
     
         <!-- TODO move this lower in the chain of imported resource files -->
+    <bean id="mbeanServer" class="org.springframework.jmx.support.MBeanServerFactoryBean"
+            p:locateExistingServerIfPossible="true"
+            p:defaultDomain="gitcloud"
+         />
+    <context:mbean-export server="mbeanServer" default-domain="gitcloud" registration="replaceExisting"/>
 
         <!--  define our own extended conversion service -->
     <bean id="conversionService" class="org.springframework.context.support.ExtendedConversionServiceFactoryBean" />

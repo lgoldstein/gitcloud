@@ -33,7 +33,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.zip.GZIPInputStream;
 
+import javax.inject.Inject;
+import javax.management.JMException;
+import javax.management.MBeanInfo;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
 import javax.net.ssl.HttpsURLConnection;
+import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -42,15 +50,20 @@ import org.apache.commons.io.ExtendedIOUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.AsciiLineOutputStream;
 import org.apache.commons.io.output.TeeOutputStream;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ExtendedCharSequenceUtils;
 import org.apache.commons.lang3.ExtendedValidate;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
 import org.apache.commons.logging.ExtendedLogUtils;
 import org.apache.commons.net.ssl.SSLUtils;
 import org.eclipse.jgit.http.server.GitSmartHttpTools;
 import org.eclipse.jgit.lib.Constants;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.RefreshedContextAttacher;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.SystemPropertyUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
@@ -64,22 +77,50 @@ public class GitController extends RefreshedContextAttacher {
             Collections.unmodifiableSet(
                     new TreeSet<String>(
                             Arrays.asList(GitSmartHttpTools.UPLOAD_PACK, GitSmartHttpTools.RECEIVE_PACK)));
+    public static final String  LOOP_DETECT_TIMEOUT="gitcloud.frontend.git.controller.loop.detect.timeout";
+        private static final String LOOP_DETECT_TIMEOUT_VALUE=SystemPropertyUtils.PLACEHOLDER_PREFIX
+                                            + LOOP_DETECT_TIMEOUT
+                                            + SystemPropertyUtils.VALUE_SEPARATOR
+                                            + 0L
+                                            + SystemPropertyUtils.PLACEHOLDER_SUFFIX;
 
-    public GitController() {
-        super();
+    private final MBeanServer   mbeanServer;
+    private final long  loopRetryTimeout;
+    private volatile long    initTimestamp=System.currentTimeMillis();
+    private volatile boolean    loopDetected;
+
+    @Inject
+    public GitController(MBeanServer localMbeanServer, @Value(LOOP_DETECT_TIMEOUT_VALUE) long loopDetectTimeout) {
+        mbeanServer = Validate.notNull(localMbeanServer, "No MBean server", ArrayUtils.EMPTY_OBJECT_ARRAY);
+        logger.info("MBeanServer default domain: " + mbeanServer.getDefaultDomain());
+        
+        String[]    domains=mbeanServer.getDomains();
+        if (!ArrayUtils.isEmpty(domains)) {
+            for (String d : domains) {
+                logger.info("MBeanServer extra domain: " + d);
+            }
+        }
+        
+        loopRetryTimeout = loopDetectTimeout;
     }
-    
+
+    @Override
+    protected void onContextInitialized(ApplicationContext context) {
+        super.onContextInitialized(context);
+        initTimestamp = System.currentTimeMillis();
+    }
+
     @RequestMapping(method=RequestMethod.GET)
-    public void serveGetRequests(HttpServletRequest req, HttpServletResponse rsp) throws IOException {
+    public void serveGetRequests(HttpServletRequest req, HttpServletResponse rsp) throws IOException, ServletException {
         serveRequest(RequestMethod.GET, req, rsp);
     }
     
     @RequestMapping(method=RequestMethod.POST)
-    public void servePostRequests(HttpServletRequest req, HttpServletResponse rsp) throws IOException {
+    public void servePostRequests(HttpServletRequest req, HttpServletResponse rsp) throws IOException, ServletException {
         serveRequest(RequestMethod.POST, req, rsp);
     }
 
-    private void serveRequest(final RequestMethod method, final HttpServletRequest req, HttpServletResponse rsp) throws IOException {
+    private void serveRequest(RequestMethod method, HttpServletRequest req, HttpServletResponse rsp) throws IOException, ServletException {
         if (logger.isDebugEnabled()) {
             logger.debug("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]");
         }
@@ -90,6 +131,55 @@ public class GitController extends RefreshedContextAttacher {
                        + " redirected to " + url.toExternalForm());
         }
 
+        if ((loopRetryTimeout > 0) && (!loopDetected)) {
+            long    now=System.currentTimeMillis(), diff=now - initTimestamp;
+            if ((diff > 0L) && (diff < loopRetryTimeout)) {
+                try {
+                    MBeanInfo   mbeanInfo=
+                            mbeanServer.getMBeanInfo(new ObjectName("net.community.chest.gitcloud.facade.backend.git:name=BackendRepositoryResolver"));
+                    if (mbeanInfo != null) {
+                        logger.info("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                  + " detected loop: " + mbeanInfo.getClassName() + "[" + mbeanInfo.getDescription() + "]");
+                        loopDetected = true;
+                    }
+                } catch(JMException e) {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                + " failed " + e.getClass().getSimpleName()
+                                + " to detect loop: " + e.getMessage());
+                    }
+                }
+            }
+        }
+        
+        /*
+         * NOTE: this feature requires enabling cross-context forwarding.
+         * In Tomcat, the 'crossContext' attribute in 'Context' element of
+         * 'TOMCAT_HOME\conf\context.xml' must be set to true, to enable cross-context 
+         */
+        if (loopDetected) {
+            ServletContext  curContext=req.getServletContext();
+            String          urlPath=url.getPath(), urlQuery=url.getQuery();
+            String[]        comps=StringUtils.split(urlPath, '/');
+            ServletContext  loopContext=Validate.notNull(curContext.getContext("/" + comps[0]), "No cross-context for %s", comps[0]);
+            // build the relative path in the re-directed context
+            StringBuilder   sb=new StringBuilder(urlPath.length() + 1 + (StringUtils.isEmpty(urlQuery) ? 0 : urlQuery.length()));
+            for (int index=1; index < comps.length; index++) {
+                sb.append('/').append(comps[index]);
+            }
+            if (!StringUtils.isEmpty(urlQuery)) {
+                sb.append('?').append(urlQuery);
+            }
+            
+            String              redirectPath=sb.toString();
+            RequestDispatcher   dispatcher=Validate.notNull(loopContext.getRequestDispatcher(redirectPath), "No dispatcher for %s", redirectPath);
+            dispatcher.forward(req, rsp);
+        } else {
+            executeRemoteRequest(method, url, req, rsp);
+        }
+    }
+    
+    private void executeRemoteRequest(final RequestMethod method, URL url, final HttpServletRequest req, HttpServletResponse rsp) throws IOException {
         HttpURLConnection   conn=openTargetConnection(method, url, req);
         try {
             if (RequestMethod.POST.equals(method)) {
@@ -101,7 +191,7 @@ public class GitController extends RefreshedContextAttacher {
                             @Override
                             @SuppressWarnings("synthetic-access")
                             public void writeLineData(CharSequence lineData) throws IOException {
-                                logger.trace("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                logger.trace("executeRemoteRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                                            + " C: " + lineData);
                             }
                             
@@ -115,7 +205,7 @@ public class GitController extends RefreshedContextAttacher {
                     try {
                         long    cpyLen=IOUtils.copyLarge(postData, postTarget);
                         if (logger.isTraceEnabled()) {
-                            logger.trace("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                            logger.trace("executeRemoteRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                                        + " copied " + cpyLen + " bytes to " + url.toExternalForm());
                         }
                     } finally {
@@ -129,7 +219,7 @@ public class GitController extends RefreshedContextAttacher {
             int statusCode=conn.getResponseCode();
             if ((statusCode < HttpServletResponse.SC_OK) || (statusCode >= HttpServletResponse.SC_MULTIPLE_CHOICES)) {
                 String    rspMsg=conn.getResponseMessage();
-                logger.warn("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                logger.warn("executeRemoteRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                           + " bad status code (" + statusCode + ")"
                           + " on redirection to " + url.toExternalForm() + ": " + rspMsg);
                 rsp.sendError(statusCode, rspMsg);
@@ -148,7 +238,7 @@ public class GitController extends RefreshedContextAttacher {
                                     @Override
                                     @SuppressWarnings("synthetic-access")
                                     public void writeLineData(CharSequence lineData) throws IOException {
-                                        logger.trace("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                        logger.trace("executeRemoteRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                                                    + " S: " + lineData);
                                     }
                                     
@@ -166,7 +256,7 @@ public class GitController extends RefreshedContextAttacher {
                         try {
                             long    cpyLen=IOUtils.copyLarge(rspData, rspTarget);
                             if (logger.isTraceEnabled()) {
-                                logger.trace("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                logger.trace("executeRemoteRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                                            + " copied " + cpyLen + " bytes from " + url.toExternalForm());
                                 
                                 if (bytesStream != null) {
@@ -190,7 +280,6 @@ public class GitController extends RefreshedContextAttacher {
             conn.disconnect();
         }
     }
-    
     private URL resolveTargetRepository(RequestMethod method, HttpServletRequest req) throws IOException {
         String  op=null, uriPath=req.getPathInfo();
         if (RequestMethod.GET.equals(method)) {

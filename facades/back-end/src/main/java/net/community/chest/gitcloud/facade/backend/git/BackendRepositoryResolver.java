@@ -32,6 +32,8 @@ import org.eclipse.jgit.transport.resolver.RepositoryResolver;
 import org.eclipse.jgit.transport.resolver.ServiceNotAuthorizedException;
 import org.eclipse.jgit.transport.resolver.ServiceNotEnabledException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jmx.export.annotation.ManagedAttribute;
+import org.springframework.jmx.export.annotation.ManagedResource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.util.SystemPropertyUtils;
@@ -41,6 +43,7 @@ import org.springframework.util.SystemPropertyUtils;
  * @since Sep 12, 2013 10:52:46 AM
  */
 @Component
+@ManagedResource(objectName="net.community.chest.gitcloud.facade.backend.git:name=BackendRepositoryResolver")
 public class BackendRepositoryResolver<C> extends AbstractRepositoryResolver<C> {
     public static final String  REPOS_BASE_PROP="gitcloud.backend.repos.dir";
     private static final String REPOS_BASE_INJECTION_VALUE=SystemPropertyUtils.PLACEHOLDER_PREFIX
@@ -63,6 +66,7 @@ public class BackendRepositoryResolver<C> extends AbstractRepositoryResolver<C> 
     }
 
     private final FileResolver<C>  resolver;
+    private final File  reposRoot;
 
     @Inject
     public BackendRepositoryResolver(@Value(REPOS_BASE_INJECTION_VALUE) String baseDir) {
@@ -70,20 +74,25 @@ public class BackendRepositoryResolver<C> extends AbstractRepositoryResolver<C> 
     }
 
     public BackendRepositoryResolver(File baseDir) {
-        Assert.notNull(baseDir, "No base folder");
-        if (baseDir.exists()) {
-            Assert.state(baseDir.isDirectory(), "Non-folder root: " + baseDir);
+        reposRoot = Validate.notNull(baseDir, "No base folder", ArrayUtils.EMPTY_OBJECT_ARRAY);
+        if (reposRoot.exists()) {
+            Assert.state(reposRoot.isDirectory(), "Non-folder root: " + reposRoot);
         } else {
-            Assert.state(baseDir.mkdirs(), "Cannot create root folder: " + baseDir);
+            Assert.state(reposRoot.mkdirs(), "Cannot create root folder: " + reposRoot);
         }
         
-        resolver = new FileResolver<C>(baseDir, true);
-        logger.info("Base dir: " + ExtendedFileUtils.toString(baseDir));
+        resolver = new FileResolver<C>(reposRoot, true);
+        logger.info("Base dir: " + ExtendedFileUtils.toString(reposRoot));
 
         synchronized(holder) {
             Assert.state(holder.get() == null, "Double registered resolver");
             holder.set(this);
         }
+    }
+
+    @ManagedAttribute(description="Base repositories folder")
+    public String getRepositoriesRootFolder() {
+        return reposRoot.getAbsolutePath();
     }
 
     @Override

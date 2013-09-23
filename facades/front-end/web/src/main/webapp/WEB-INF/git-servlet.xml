@@ -18,6 +18,17 @@
     <!-- Configures the Spring MVC @Controller programming model -->
     <mvc:annotation-driven conversion-service="conversionService" />
 
+        <!-- workaround for https://jira.springsource.org/browse/SPR-10907
+        
+            NOTE: the properties reference must match the id used for
+            the util:properties element in the parent context
+         -->
+    <context:property-placeholder
+        properties-ref="gitcloud-frontend-properties"
+        system-properties-mode="ENVIRONMENT"
+        ignore-unresolvable="false"
+      />
+
         <!-- Automatically registers the @Controller's request mappings -->
     <context:component-scan base-package="net.community.chest.gitcloud.facade.frontend.git" />
 </beans>
