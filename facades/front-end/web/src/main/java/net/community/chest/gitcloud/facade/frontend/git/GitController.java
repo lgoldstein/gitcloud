@@ -210,7 +210,7 @@ public class GitController extends RefreshedContextAttacher {
                        + " redirected to " + url.toExternalForm());
         }
 
-        HttpURLConnection   conn=openTargetConnection(method, url, req);
+        HttpURLConnection   conn=openTargetConnection(method, url);
         try {
             Map<String,String>  reqHeaders=copyRequestHeadersValues(req, conn);
             if (RequestMethod.POST.equals(method)) {
@@ -375,7 +375,7 @@ public class GitController extends RefreshedContextAttacher {
     }
     
     // TODO move this to some generic util location
-    private HttpURLConnection openTargetConnection(RequestMethod method, URL url, HttpServletRequest req) throws IOException {
+    private HttpURLConnection openTargetConnection(RequestMethod method, URL url) throws IOException {
         HttpURLConnection   conn=(HttpURLConnection) url.openConnection();
         if (conn instanceof HttpsURLConnection) {
             HttpsURLConnection    https=(HttpsURLConnection) conn;
