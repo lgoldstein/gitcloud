@@ -56,6 +56,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.logging.ExtendedLogUtils;
 import org.apache.commons.net.ssl.SSLUtils;
+import org.apache.http.conn.HttpClientConnectionManager;
 import org.eclipse.jgit.http.server.GitSmartHttpTools;
 import org.eclipse.jgit.lib.Constants;
 import org.springframework.beans.factory.annotation.Value;
@@ -99,6 +100,7 @@ public class GitController extends RefreshedContextAttacher {
                                             + SystemPropertyUtils.PLACEHOLDER_SUFFIX;
 
     private final MBeanServer   mbeanServer;
+    private final HttpClientConnectionManager   connsManager;
     private final long  loopRetryTimeout;
     private final int   urlRedirectConnectTimeout, urlRedirectReadTimeout;
     private volatile long    initTimestamp=System.currentTimeMillis();
@@ -106,10 +108,12 @@ public class GitController extends RefreshedContextAttacher {
 
     @Inject
     public GitController(MBeanServer localMbeanServer,
+            HttpClientConnectionManager connectionsManager,
             @Value(LOOP_DETECT_TIMEOUT_VALUE) long loopDetectTimeout,
             @Value(URL_REDIRECT_CONNECT_TIMEOUT_VALUE) int redirectConnectTimeout,
             @Value(URL_REDIRECT_READ_TIMEOUT_VALUE) int redirectReadTimeout) {
         mbeanServer = Validate.notNull(localMbeanServer, "No MBean server", ArrayUtils.EMPTY_OBJECT_ARRAY);
+        connsManager = Validate.notNull(connectionsManager, "No connections manager", ArrayUtils.EMPTY_OBJECT_ARRAY);
         loopRetryTimeout = loopDetectTimeout;
         
         Validate.isTrue(redirectConnectTimeout > 0, "Invalid URL redirect connect timeout: %d", redirectConnectTimeout);
