@@ -54,29 +54,4 @@ public class GitControllerTest extends AbstractSpringTestSupport {
             assertNull("Unexpected name for " + uriPath, GitController.extractRepositoryName(uriPath));
         }
     }
-
-    @Test
-    public void testCapitalizeHttpHeaderNameOnCapitalizedValues() {
-        for (String expected : new String[] { "Host", "Content-Type", "Content-Transfer-Encoding" }) {
-            String  actual=GitController.capitalizeHttpHeaderName(expected);
-            assertSame("Unexpected modification", expected, actual);
-        }
-    }
-    
-    @Test
-    public void testCapitalizeHttpHeaderNameOnNonCapitalizedValues() {
-        String[]    values={
-                "host",                         "Host",
-                "content-type",                 "Content-Type",
-                "content-transfer-encoding",    "Content-Transfer-Encoding",
-                "Prefixed-capitalized",         "Prefixed-Capitalized",
-                "suffix-Capitalized",           "Suffix-Capitalized",
-                "mixed-Capitalized-name-Value", "Mixed-Capitalized-Name-Value"
-            };
-        for (int    index=0; index < values.length; index += 2) {
-            String  hdr=values[index], expected=values[index+1];
-            String  actual=GitController.capitalizeHttpHeaderName(expected);
-            assertEquals("Mismatched results for hdr=" + hdr, expected, actual);
-        }
-    }
 }

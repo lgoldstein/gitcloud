@@ -1,62 +1,54 @@
 service(POST)[/git-backend/git/test-project.git/git-receive-pack][null]
-service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ user-agent: git/1.8.1.msysgit.1
-service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ accept-encoding: gzip
-service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ content-type: application/x-git-receive-pack-request
-service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ accept: application/x-git-receive-pack-result
-service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ cache-control: no-cache
-service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ pragma: no-cache
-service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ host: localhost:8080
-service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ connection: keep-alive
-service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ content-length: 627
+service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ Accept: application/x-git-receive-pack-result
+service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ Accept-Encoding: gzip
+service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ Cache-Control: no-cache
+service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ Connection: keep-alive
+service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ Content-Length: 511
+service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ Content-Type: application/x-git-receive-pack-request
+service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ Host: localhost:8080
+service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ Pragma: no-cache
+service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] REQ User-Agent: git/1.8.1.msysgit.1
 create(POST)[/git-backend/git/test-project.git/git-receive-pack][null]: C:\Projects\gitcloud\master\Servers\apache-tomcat-7.0.42\gitcloud\repos\test-project.git
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(S): 0028Updating references: 100% (1/1) 0025Updating references: 100% (1/1)
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(S): 0028Updating references: 100% (1/1)0025Updating references: 100% (1/1)
 create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(S): 0030000eunpack ok
 create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(S): 0019ok refs/heads/master
 create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(S): 00000000
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000000 30 30 38 34 64 65 35 31 37 65 37 65 66 39 66 64 0084de517e7ef9fd
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000010 61 30 33 63 30 34 39 61 32 32 63 65 32 31 35 66 a03c049a22ce215f
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000020 34 31 35 63 34 30 63 63 32 64 64 62 20 33 32 62 415c40cc2ddb 32b
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000030 34 35 38 39 61 62 66 39 63 61 65 65 33 32 31 39 4589abf9caee3219
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000040 62 30 36 35 64 39 38 65 36 33 38 62 35 38 66 30 b065d98e638b58f0
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000050 39 39 30 32 36 20 72 65 66 73 2F 68 65 61 64 73 99026 refs/heads
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000000 30 30 38 34 33 32 62 34 35 38 39 61 62 66 39 63 008432b4589abf9c
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000010 61 65 65 33 32 31 39 62 30 36 35 64 39 38 65 36 aee3219b065d98e6
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000020 33 38 62 35 38 66 30 39 39 30 32 36 20 38 61 65 38b58f099026 8ae
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000030 62 62 32 38 31 33 62 34 35 37 36 30 33 33 65 63 bb2813b4576033ec
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000040 66 34 32 32 35 66 33 33 33 63 38 62 39 66 32 63 f4225f333c8b9f2c
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000050 65 64 33 63 39 20 72 65 66 73 2F 68 65 61 64 73 ed3c9 refs/heads
 create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000060 2F 6D 61 73 74 65 72 00 20 72 65 70 6F 72 74 2D /master. report-
 create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000070 73 74 61 74 75 73 20 73 69 64 65 2D 62 61 6E 64 status side-band
 create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000080 2D 36 34 6B 30 30 30 30 50 41 43 4B 00 00 00 02 -64k0000PACK....
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000090 00 00 00 03 9E 0D 78 9C 9D 8C CB 0A 02 31 0C 00 ......x......1..
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000000A0 EF FD 8A DE 05 49 D2 D7 16 44 F4 53 DA 24 D5 85 .....I...D.S.$..
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000000B0 7D C8 5A F5 F7 DD 9B 77 6F C3 C0 4C DF 54 AD AB }.Z....wo..L.T..
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000000C0 31 63 24 94 C8 15 35 40 E2 41 9C 6F D2 0A 0A 27 1c$...5@.A.o...'
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000000D0 A2 10 C4 81 6F 64 1E 65 D3 A5 5B D1 80 49 93 B6 ....od.e..[..I..
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000000E0 DC A4 80 63 F0 B9 10 B1 12 86 E6 31 B0 07 66 12 ...c.......1..f.
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000000F0 A9 A6 BC FA 7D DD EC 74 5B 27 79 76 1D 17 7B FA ....}..t['yv..{.
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000100 F1 E5 3D 7F F6 DF 91 D7 F9 6C D1 0D 00 E0 72 CC ..=......l....r.
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000110 F6 00 0E C0 EC 76 1E 7B D7 FF 6A 73 15 51 31 5F .....v.{..js.Q1_
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000120 D4 15 44 A8 A2 05 78 9C 33 34 30 30 33 31 51 48 ..D...x.340031QH
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000130 CF 2C D1 4D CE CF 4B CB 4C D7 2B A9 28 61 58 E6 .,.M..K.L.+.(aX.
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000140 B9 6C 5F 84 4D 86 C8 9D FA 23 DC 77 2C 93 45 34 .l_.M....#.w,.E4
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000150 4A AE 6D 32 44 A8 CC C9 2C 2E 01 AB 4B FD 74 DE J.m2D...,...K.t.
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000160 50 E1 B8 C5 3B 3B 67 ED 0F BB 76 75 30 08 C7 66 P...;;g...vu0..f
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000170 69 01 00 CB 59 1F 0C B9 15 78 9C 4D 90 C1 6E 83 i...Y....x.M..n.
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000180 30 0C 86 CF E4 29 10 C7 4E 5D 38 56 48 BD 4D EB 0....)..N]8VH.M.
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000190 71 0F 80 76 48 89 13 B2 85 18 D9 66 12 6F 5F 03 q..vH......f.o_.
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000001A0 52 D7 E3 17 7F F2 FF 3B FD 80 04 DF A6 22 98 91 R......;....."..
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000001B0 93 20 AD 01 69 72 F2 07 C4 09 4B 7D AD 5B 53 85 . ..ir....K}.[S.
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000001C0 94 61 42 0F 4A C1 65 06 53 DD 1D BD 50 C6 E8 72 .aB.J.e.S...P..r
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000001D0 26 08 CB EC 9D 00 EB 44 68 D1 01 AF 53 4E E5 97 &......Dh...SN..
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000001E0 FF D5 14 8B 06 0E 8E E1 29 8D C9 C3 07 CA A7 86 ........).......
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000001F0 6C A2 47 B9 25 F9 2A 79 35 3D 69 AC 40 DD 20 A5 l.G.%.*y5=i.@. .
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000200 98 4A A3 3D 17 CA EA 8C 22 73 67 6D C6 C1 E5 11 .J.=...."sgm....
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000210 59 BA 4B 7B 69 6D 4C 72 0E 84 45 A0 F8 0D AC 56 Y.K{imLr..E....V
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000220 91 F3 4C F8 03 83 BC EB 83 5E 02 32 8C BA E0 4D ..L......^.2...M
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000230 CB B2 1D C1 79 B6 A7 6E 87 23 8B ED 91 65 4F A6 ....y..n.#...eO.
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000240 BF 93 2B 6A 37 93 63 01 6A F6 5F DA FB 5C EB 43 ..+j7.c.j._..\.C
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000250 32 D5 04 14 37 7E 59 77 D8 E6 01 60 E8 76 71 67 2...7~Yw...`.vqg
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000260 E6 C0 E0 2B A7 85 42 1C 43 2B 99 7C C9 FD E1 91 ...+..B.C+.|....
-create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000270 C0 1F 33                                        ..3
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000090 00 00 00 03 9A 0E 78 9C 9D 8D CB 0E C2 20 10 45 ......x...... .E
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000000A0 F7 7C 05 7B 13 03 1D 18 99 C4 34 FA 29 3C 06 25 .|.{......4.)<.%
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000000B0 69 4B 43 51 7F 5F 76 EE DD DD 9C E4 9E D3 1B B3 iKCQ._v.........
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000000C0 34 26 5A D6 01 23 FA CC 19 0C 5D BC 01 A5 34 5A 4&Z..#....]...4Z
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000000D0 64 20 26 35 58 D2 0E C5 EE 1B 6F 5D C2 14 8C 75 d &5X.....o]...u
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000000E0 E4 43 A6 E8 99 61 D2 14 14 DA 44 8E 11 5C B0 2E .C...a....D..\..
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000000F0 2B 22 35 A1 F0 AF FE AC 4D 2E 8F BA A4 A3 73 D9 +"5.....M.....s.
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000100 E4 F5 B7 6F EF F5 33 7C E7 58 D7 59 6A 70 23 68 ...o..3|.X.Yjp#h
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000110 08 AD 3C A9 D1 16 83 AE A5 77 FE EF 2D EE 29 71 ..<......w..-.)q
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000120 92 89 8F D8 CA DE 4B DD C4 17 5F 6E 48 20 A1 08 ......K..._nH ..
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000130 78 9C 33 34 30 30 33 31 51 48 CF 2C D1 4D CE CF x.340031QH.,.M..
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000140 4B CB 4C D7 2B A9 28 61 58 E6 B9 6C 5F 84 4D 86 K.L.+.(aX..l_.M.
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000150 C8 9D FA 23 DC 77 2C 93 45 34 4A AE 6D 32 44 A8 ...#.w,.E4J.m2D.
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000160 4C 49 2D 4E 2E CA 2C 28 C9 CC CF 03 2B F7 EC 56 LI-N..,(....+..V
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000170 AB EA A9 10 F2 E4 4D A9 6C 9E 13 5A FE 6A DD F1 ......M.l..Z.j..
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000180 B9 49 48 CA 73 32 8B 4B C0 EA 52 3F 9D 37 54 38 .IH.s2.K..R?.7T8
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 00000190 6E F1 CE CE 59 FB C3 AE 5D 1D 0C C2 B1 59 5A 00 n...Y...]....YZ.
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000001A0 02 D1 31 04 B9 04 78 9C 0B CD CB 4B CC 4D 4D 51 ..1...x....K.MMQ
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000001B0 28 4A 2D C8 2F CE 2C C9 2F AA B4 56 48 4D C9 2C (J-./.,./..VHM.,
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000001C0 51 28 C9 C8 2C 56 48 CB CC 49 55 50 4F 49 2D 4E Q(..,VH..IUPOI-N
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000001D0 2E CA 2C 28 C9 CC CF 53 57 28 C9 57 00 E9 00 CA ..,(...SW(.W....
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000001E0 A7 22 69 D2 E3 02 00 EF B4 1A D1 43 FF 24 93 CB ."i........C.$..
+create(POST)[/git-backend/git/test-project.git/git-receive-pack][null] receive(C): 000001F0 CC 3F 36 FE 8C 42 2E 5E 1F 51 A9 9A 80 C2 25    .?6..B.^.Q....%
 service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] Content-Type: application/x-git-receive-pack-result, status=200
-service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] RSP Expires: Fri, 01 Jan 1980 00:00:00 GMT
-service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] RSP Pragma: no-cache
 service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] RSP Cache-Control: no-cache, max-age=0, must-revalidate
 service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] RSP Content-Type: application/x-git-receive-pack-result
+service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] RSP Date: Tue, 24 Sep 2013 09:29:37 GMT
+service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] RSP Expires: Fri, 01 Jan 1980 00:00:00 GMT
+service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] RSP Pragma: no-cache
 service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] RSP Transfer-Encoding: chunked
-service(POST)[/git-backend/git/test-project.git/git-receive-pack][null] RSP Date: Tue, 24 Sep 2013 06:26:42 GMT

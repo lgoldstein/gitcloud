@@ -16,10 +16,17 @@ package net.community.chest.gitcloud.facade;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Enumeration;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.logging.Level;
 
 import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.lang3.ExtendedCharSequenceUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.AbstractJULWrapper;
 import org.apache.commons.logging.Log;
 import org.springframework.util.ExtendedPlaceholderResolverUtils;
@@ -30,7 +37,6 @@ import org.springframework.util.NamedExtendedPlaceholderResolver;
  * @since Sep 11, 2013 4:17:32 PM
  */
 public class ServletUtils {
-    // TODO move this to some util(s) artifact
     public static final NamedExtendedPlaceholderResolver toPlaceholderResolver(final ServletContext context) {
         if (context == null) {
             return ExtendedPlaceholderResolverUtils.EMPTY_RESOLVER;
@@ -60,7 +66,6 @@ public class ServletUtils {
         }
     }
 
-    // TODO move this to some util(s) artifact
     public static final Log wrapServletContext(final ServletContext context, final Level thresholdLevel) {
         if ((context == null) || (thresholdLevel == null)) {
             throw new IllegalArgumentException("Incomplete wrapper specification");
@@ -95,5 +100,76 @@ public class ServletUtils {
                 }
             }
         };
+    }
+    
+    public static final Map<String,String> getRequestHeaders(HttpServletRequest req) {
+        // NOTE: map must be case insensitive as per HTTP requirements
+        Map<String,String>  hdrsMap=new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
+        for (Enumeration<String> hdrs=req.getHeaderNames(); (hdrs != null) && hdrs.hasMoreElements(); ) {
+            String  hdrName=hdrs.nextElement(), hdrValue=req.getHeader(hdrName);
+            hdrsMap.put(capitalizeHttpHeaderName(hdrName), StringUtils.trimToEmpty(hdrValue));
+        }
+
+        return hdrsMap;
+    }
+    
+    public static final Map<String,String> getResponseHeaders(HttpServletResponse rsp) {
+        // NOTE: map must be case insensitive as per HTTP requirements
+        Map<String,String>  hdrsMap=new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
+        for (String hdrName : rsp.getHeaderNames()) {
+            String  hdrValue=rsp.getHeader(hdrName);
+            hdrsMap.put(capitalizeHttpHeaderName(hdrName), StringUtils.trimToEmpty(hdrValue));
+        }
+
+        return hdrsMap;
+    }
+
+    public static final String capitalizeHttpHeaderName(String hdrName) {
+        if (StringUtils.isEmpty(hdrName)) {
+            return hdrName;
+        }
+
+        int curPos=hdrName.indexOf('-');
+        if (curPos < 0) {
+            return ExtendedCharSequenceUtils.capitalize(hdrName);
+        }
+
+        StringBuilder   sb=null;
+        for (int  lastPos=0; ; ) {
+            char    ch=hdrName.charAt(lastPos), tch=Character.toTitleCase(ch);
+            if (ch != tch) {
+                if (sb == null) {
+                    sb = new StringBuilder(hdrName.length());
+                    // append the data that was OK
+                    if (lastPos > 0) {
+                        sb.append(hdrName.substring(0, lastPos));
+                    }
+                }
+                
+                sb.append(tch);
+                
+                if (curPos > lastPos) {
+                    sb.append(hdrName.substring(lastPos + 1 /* excluding the capital letter */, curPos + 1 /* including the '-' */));
+                } else {    // last component in string
+                    sb.append(hdrName.substring(lastPos + 1 /* excluding the capital letter */));
+                }
+            }
+
+            if (curPos < lastPos) {
+                break;
+            }
+
+            if ((lastPos=curPos + 1) >= hdrName.length()) {
+                break;
+            }
+            
+            curPos = hdrName.indexOf('-', lastPos);
+        }
+
+        if (sb == null) {   // There was no need to modify anything
+            return hdrName;
+        } else {
+            return sb.toString();
+        }
     }
 }

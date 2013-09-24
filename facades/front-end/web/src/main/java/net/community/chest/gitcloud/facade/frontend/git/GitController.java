@@ -22,7 +22,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,6 +42,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import net.community.chest.gitcloud.facade.ServletUtils;
+
 import org.apache.commons.collections15.ExtendedCollectionUtils;
 import org.apache.commons.io.ExtendedIOUtils;
 import org.apache.commons.io.HexDump;
@@ -51,8 +52,6 @@ import org.apache.commons.io.output.AsciiLineOutputStream;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.io.output.TeeOutputStream;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.ExtendedCharSequenceUtils;
-import org.apache.commons.lang3.ExtendedValidate;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.logging.ExtendedLogUtils;
@@ -228,7 +227,7 @@ public class GitController extends RefreshedContextAttacher {
             } else {
                 rsp.setStatus(statusCode);
 
-                Map<String,String>  rspHeaders=copyResponseHeadersValues(conn, rsp);
+                Map<String,String>  rspHeaders=copyResponseHeadersValues(conn, req, rsp);
                 transferBackendResponse(method, req, rsp, conn, rspHeaders);
             }
         } finally {
@@ -349,24 +348,24 @@ public class GitController extends RefreshedContextAttacher {
     }
 
     private URL resolveTargetRepository(RequestMethod method, HttpServletRequest req) throws IOException {
-        String  op=null, uriPath=req.getPathInfo();
-        if (RequestMethod.GET.equals(method)) {
-            op = req.getParameter("service");
-        } else {
+        String  op=StringUtils.trimToEmpty(req.getParameter("service")), uriPath=req.getPathInfo();
+        if (StringUtils.isEmpty(op)) {
             int pos=uriPath.lastIndexOf('/');
             if ((pos > 0) && (pos < (uriPath.length() - 1))) {
                 op = uriPath.substring(pos + 1);
             }
         }
 
-        if (!StringUtils.isEmpty(op)) {
-            ExtendedValidate.isTrue(ALLOWED_SERVICES.contains(op), "Unsupported service: %s", op);
+        if (!ALLOWED_SERVICES.contains(op)) {
+            throw ExtendedLogUtils.thrownLogging(logger, Level.WARNING,
+                    "resolveTargetRepository(" + method + " " + uriPath + ")",
+                    new UnsupportedOperationException("Unsupported operation: " + op));
         }
         
         String repoName=extractRepositoryName(uriPath);
         if (StringUtils.isEmpty(repoName)) {
             throw ExtendedLogUtils.thrownLogging(logger, Level.WARNING,
-                         "resolveTargetRepository(" + uriPath + ")",
+                         "resolveTargetRepository(" + method + " " + uriPath + ")",
                          new IllegalArgumentException("Failed to extract repo name from " + uriPath));
         }
 
@@ -401,39 +400,44 @@ public class GitController extends RefreshedContextAttacher {
 
     // TODO move this to some generic util location
     private Map<String,String> copyRequestHeadersValues(HttpServletRequest req, HttpURLConnection conn) {
-        // NOTE: map must be case insensitive as per HTTP requirements
-        Map<String,String>  hdrsValues=new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
-        for (Enumeration<String> hdrs=req.getHeaderNames(); (hdrs != null) && hdrs.hasMoreElements(); ) {
-            String  hdrName=capitalizeHttpHeaderName(hdrs.nextElement()), hdrValue=req.getHeader(hdrName);
+        Map<String,String>  hdrsMap=ServletUtils.getRequestHeaders(req);
+        for (Map.Entry<String,String> hdrEntry : hdrsMap.entrySet()) {
+            String  hdrName=hdrEntry.getKey(), hdrValue=StringUtils.trimToEmpty(hdrEntry.getValue());
             if (StringUtils.isEmpty(hdrValue)) {
-                continue;
-            }
-
-            if (logger.isTraceEnabled()) {
+                logger.warn("copyRequestHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                          + " no value for header " + hdrName);
+                
+            } else if (logger.isTraceEnabled()) {
                 logger.trace("copyRequestHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                            + " " + hdrName + ": " + hdrValue);
             }
 
             conn.setRequestProperty(hdrName, hdrValue);
-            hdrsValues.put(hdrName, hdrValue);
         }
 
-        return hdrsValues;
+        return hdrsMap;
     }
 
     // TODO move this to some generic util location
-    private Map<String,String> copyResponseHeadersValues(HttpURLConnection conn, HttpServletResponse rsp) {
+    private Map<String,String> copyResponseHeadersValues(HttpURLConnection conn, HttpServletRequest req, HttpServletResponse rsp) {
         // NOTE: map must be case insensitive as per HTTP requirements
         Map<String,String>          hdrsValues=new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
         Map<String,List<String>>    headerFields=conn.getHeaderFields();
         for (Map.Entry<String,List<String>> hdr : headerFields.entrySet()) {
-            String  hdrName=capitalizeHttpHeaderName(hdr.getKey());
+            String  hdrName=ServletUtils.capitalizeHttpHeaderName(hdr.getKey());
+            // The response code + message is encoded using an empty header name
             if (StringUtils.isEmpty(hdrName)) {
-                continue;   // The response code + message is encoded using an empty header name
+                if (logger.isTraceEnabled()) {
+                    logger.trace("copyResponseHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]: " + hdr.getValue());
+                }
+                continue;
             }
 
             List<String>    values=hdr.getValue();
             if (ExtendedCollectionUtils.isEmpty(values)) {
+                logger.warn("copyResponseHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                          + " no value for header " + hdrName);
+                rsp.setHeader(hdrName, "");
                 continue;
             }
 
@@ -444,8 +448,8 @@ public class GitController extends RefreshedContextAttacher {
                 }
 
                 if (logger.isTraceEnabled()) {
-                    URL url=conn.getURL();
-                    logger.trace("copyResponseHeadersValues(" + url.toExternalForm() + "] " + hdrName + ": " + hdrValue);
+                    logger.trace("copyResponseHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                               + " " + hdrName + ": " + hdrValue);
                 }
 
                 rsp.setHeader(hdrName, hdrValue);
@@ -459,8 +463,8 @@ public class GitController extends RefreshedContextAttacher {
 
                     rsp.addHeader(hdrName, hdrValue);
                     if (logger.isTraceEnabled()) {
-                        URL url=conn.getURL();
-                        logger.trace("copyResponseHeadersValues(" + url.toExternalForm() + "] " + hdrName + "[" + index + "]: " + hdrValue);
+                        logger.trace("copyResponseHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                   + " " + hdrName + "[" + index + "]: " + hdrValue);
                     }
                 }
 
@@ -469,56 +473,6 @@ public class GitController extends RefreshedContextAttacher {
         }
         
         return hdrsValues;
-    }
-
-    // TODO move this to some generic util location
-    public static final String capitalizeHttpHeaderName(String hdrName) {
-        if (StringUtils.isEmpty(hdrName)) {
-            return hdrName;
-        }
-
-        int curPos=hdrName.indexOf('-');
-        if (curPos < 0) {
-            return ExtendedCharSequenceUtils.capitalize(hdrName);
-        }
-
-        StringBuilder   sb=null;
-        for (int  lastPos=0; ; ) {
-            char    ch=hdrName.charAt(lastPos), tch=Character.toTitleCase(ch);
-            if (ch != tch) {
-                if (sb == null) {
-                    sb = new StringBuilder(hdrName.length());
-                    // append the data that was OK
-                    if (lastPos > 0) {
-                        sb.append(hdrName.substring(0, lastPos));
-                    }
-                }
-                
-                sb.append(tch);
-                
-                if (curPos > lastPos) {
-                    sb.append(hdrName.substring(lastPos + 1 /* excluding the capital letter */, curPos + 1 /* including the '-' */));
-                } else {    // last component in string
-                    sb.append(hdrName.substring(lastPos + 1 /* excluding the capital letter */));
-                }
-            }
-
-            if (curPos < lastPos) {
-                break;
-            }
-
-            if ((lastPos=curPos + 1) >= hdrName.length()) {
-                break;
-            }
-            
-            curPos = hdrName.indexOf('-', lastPos);
-        }
-
-        if (sb == null) {   // There was no need to modify anything
-            return hdrName;
-        } else {
-            return sb.toString();
-        }
     }
 
     // TODO move this to some generic util location
