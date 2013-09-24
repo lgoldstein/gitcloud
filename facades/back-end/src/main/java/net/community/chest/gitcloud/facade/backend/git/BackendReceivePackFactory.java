@@ -14,19 +14,24 @@
  */
 package net.community.chest.gitcloud.facade.backend.git;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.zip.GZIPInputStream;
 
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
 
 import net.community.chest.gitcloud.facade.git.PackFactory;
 
+import org.apache.commons.io.HexDump;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.input.ByteArrayAccumulatingInputStream;
 import org.apache.commons.io.input.CloseShieldInputStream;
-import org.apache.commons.io.input.LineInputStream;
 import org.apache.commons.io.output.AsciiLineOutputStream;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.io.output.CloseShieldOutputStream;
 import org.apache.commons.io.output.TeeOutputStream;
 import org.eclipse.jgit.lib.Repository;
@@ -76,11 +81,13 @@ public class BackendReceivePackFactory<C> extends PackFactory<C> implements Rece
     @Override
     public ReceivePack create(C request, Repository db)
             throws ServiceNotEnabledException, ServiceNotAuthorizedException {
-        final String    logPrefix;
+        final String    logPrefix, encoding;
         if (request instanceof HttpServletRequest) {
             HttpServletRequest  req=(HttpServletRequest) request;
+            encoding = req.getHeader("Content-Encoding");
             logPrefix = "create(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]";
         } else {
+            encoding = null;
             logPrefix = "create(" + db.getDirectory() + ")";
         }
         if (logger.isDebugEnabled()) {
@@ -92,17 +99,7 @@ public class BackendReceivePackFactory<C> extends PackFactory<C> implements Rece
             @SuppressWarnings("synthetic-access")
             public void receive(InputStream input, OutputStream output, OutputStream messages) throws IOException {
                 if (logger.isTraceEnabled()) {
-                    InputStream effIn=new LineInputStream(new CloseShieldInputStream(input), true) {
-                            @Override
-                            public void writeLineData(CharSequence lineData) throws IOException {
-                                logger.trace(logPrefix + " receive(C): " + lineData);
-                            }
-                            
-                            @Override
-                            public boolean isWriteEnabled() {
-                                return true;
-                            }
-                        };
+                    ByteArrayAccumulatingInputStream effIn=new ByteArrayAccumulatingInputStream(new CloseShieldInputStream(input));
                     try {
                         OutputStream    effOut=
                                 new TeeOutputStream(
@@ -124,6 +121,39 @@ public class BackendReceivePackFactory<C> extends PackFactory<C> implements Rece
                         }
                     } finally {
                         effIn.close();
+                    }
+                    
+                    byte[] gzBytes=effIn.toByteArray();
+                    if ("gzip".equalsIgnoreCase(encoding)) {
+                        ByteArrayOutputStream   baos=new ByteArrayOutputStream(Math.max(1024, gzBytes.length * 2));
+                        try {
+                            InputStream gzStream=new GZIPInputStream(new ByteArrayInputStream(gzBytes));
+                            try {
+                                IOUtils.copyLarge(gzStream, baos);
+                            } finally {
+                                gzStream.close();
+                            }
+                        } finally {
+                            baos.close();
+                        }
+                        gzBytes = baos.toByteArray();
+                    }
+                    
+                    AsciiLineOutputStream   logStream=new AsciiLineOutputStream() {
+                            @Override
+                            public void writeLineData(CharSequence lineData) throws IOException {
+                                logger.trace(logPrefix + " receive(C): " + lineData);
+                            }
+                            
+                            @Override
+                            public boolean isWriteEnabled() {
+                                return true;
+                            }
+                        };
+                    try {
+                        HexDump.dump(gzBytes, 0L, logStream, 0);
+                    } finally {
+                        logStream.close();
                     }
                 } else {
                     super.receive(input, output, messages);

@@ -15,7 +15,6 @@
 package net.community.chest.gitcloud.facade.frontend.git;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -46,8 +45,10 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.collections15.ExtendedCollectionUtils;
 import org.apache.commons.io.ExtendedIOUtils;
+import org.apache.commons.io.HexDump;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.AsciiLineOutputStream;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.io.output.TeeOutputStream;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ExtendedCharSequenceUtils;
@@ -228,9 +229,7 @@ public class GitController extends RefreshedContextAttacher {
                 rsp.setStatus(statusCode);
 
                 Map<String,String>  rspHeaders=copyResponseHeadersValues(conn, rsp);
-                if (RequestMethod.GET.equals(method)) {
-                    transferBackendResponse(method, req, rsp, conn, rspHeaders);
-                }
+                transferBackendResponse(method, req, rsp, conn, rspHeaders);
             }
         } finally {
             conn.disconnect();
@@ -242,29 +241,12 @@ public class GitController extends RefreshedContextAttacher {
             throws IOException {
         InputStream postData=req.getInputStream();
         try {
-            ByteArrayOutputStream   bytesStream=null;
-            OutputStream            postTarget=conn.getOutputStream(), logStream=null;
-            String                  encoding=reqHeaders.get("Content-Encoding");
+            ByteArrayOutputStream  bytesStream=null;
+            OutputStream           postTarget=conn.getOutputStream();
+            String                 encoding=reqHeaders.get("Content-Encoding");
             if (logger.isTraceEnabled()) {
-                logStream = new AsciiLineOutputStream() {
-                        @Override
-                        @SuppressWarnings("synthetic-access")
-                        public void writeLineData(CharSequence lineData) throws IOException {
-                            logger.trace("transferPostedData(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                                       + " C: " + lineData);
-                        }
-    
-                        @Override
-                        public boolean isWriteEnabled() {
-                            return true;
-                        }
-                    };
-                    
-                if ("gzip".equalsIgnoreCase(encoding)) {
-                    bytesStream = new ByteArrayOutputStream();
-                }
-
-                postTarget = new TeeOutputStream(postTarget, (bytesStream == null) ? logStream : bytesStream);
+                bytesStream = new ByteArrayOutputStream();
+                postTarget = new TeeOutputStream(postTarget, bytesStream);
             }
 
             try {
@@ -272,19 +254,42 @@ public class GitController extends RefreshedContextAttacher {
                 if (logger.isTraceEnabled()) {
                     final URL   url=conn.getURL();
                     logger.trace("transferPostedData(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                               + " copied " + cpyLen + " bytes to " + url.toExternalForm());
+                               + " copied " + cpyLen + " bytes (encoding=" + encoding + ")"
+                               + " to " + url.toExternalForm());
 
                     if (bytesStream != null) {
-                        InputStream gzStream=new GZIPInputStream(new ByteArrayInputStream(bytesStream.toByteArray()));
+                        if ("gzip".equalsIgnoreCase(encoding)) {
+                            byte[]      gzBytes=bytesStream.toByteArray();
+                            InputStream gzStream=new GZIPInputStream(new ByteArrayInputStream(gzBytes));
+                            try {
+                                bytesStream.reset();
+                                IOUtils.copyLarge(gzStream, bytesStream);
+                            } finally {
+                                gzStream.close();
+                            }
+                        }
+                        
+                        AsciiLineOutputStream   logStream=new AsciiLineOutputStream() {
+                                @Override
+                                @SuppressWarnings("synthetic-access")
+                                public void writeLineData(CharSequence lineData) throws IOException {
+                                    logger.trace("transferPostedData(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "] C: " + lineData);
+                                }
+                                
+                                @Override
+                                public boolean isWriteEnabled() {
+                                    return true;
+                                }
+                            };
                         try {
-                            IOUtils.copyLarge(gzStream, logStream);
+                            HexDump.dump(bytesStream.toByteArray(), 0L, logStream, 0);
                         } finally {
-                            gzStream.close();
+                            logStream.close();
                         }
                     }
                 }
             } finally {
-                ExtendedIOUtils.closeAll(postTarget, logStream, bytesStream);
+                ExtendedIOUtils.closeAll(postTarget, bytesStream);
             }
         } finally {
             postData.close();
@@ -396,6 +401,7 @@ public class GitController extends RefreshedContextAttacher {
 
     // TODO move this to some generic util location
     private Map<String,String> copyRequestHeadersValues(HttpServletRequest req, HttpURLConnection conn) {
+        // NOTE: map must be case insensitive as per HTTP requirements
         Map<String,String>  hdrsValues=new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
         for (Enumeration<String> hdrs=req.getHeaderNames(); (hdrs != null) && hdrs.hasMoreElements(); ) {
             String  hdrName=capitalizeHttpHeaderName(hdrs.nextElement()), hdrValue=req.getHeader(hdrName);
@@ -417,6 +423,7 @@ public class GitController extends RefreshedContextAttacher {
 
     // TODO move this to some generic util location
     private Map<String,String> copyResponseHeadersValues(HttpURLConnection conn, HttpServletResponse rsp) {
+        // NOTE: map must be case insensitive as per HTTP requirements
         Map<String,String>          hdrsValues=new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
         Map<String,List<String>>    headerFields=conn.getHeaderFields();
         for (Map.Entry<String,List<String>> hdr : headerFields.entrySet()) {
