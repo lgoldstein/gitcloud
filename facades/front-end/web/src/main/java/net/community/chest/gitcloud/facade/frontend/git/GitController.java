@@ -225,7 +225,7 @@ public class GitController extends RefreshedContextAttacher {
                           + " on redirection to " + url.toExternalForm() + ": " + rspMsg);
                 rsp.sendError(statusCode, rspMsg);
             } else {
-                rsp.sendError(statusCode);
+                rsp.setStatus(statusCode);
 
                 Map<String,String>  rspHeaders=copyResponseHeadersValues(conn, rsp);
                 if (RequestMethod.GET.equals(method)) {
