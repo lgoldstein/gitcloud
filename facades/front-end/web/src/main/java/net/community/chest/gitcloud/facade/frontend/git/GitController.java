@@ -238,6 +238,7 @@ public class GitController extends RefreshedContextAttacher {
     private void transferPostedData(
                 final RequestMethod method, final HttpServletRequest req, HttpURLConnection conn, Map<String,String> reqHeaders)
             throws IOException {
+        final URL   url=conn.getURL();
         InputStream postData=req.getInputStream();
         try {
             ByteArrayOutputStream  bytesStream=null;
@@ -248,10 +249,11 @@ public class GitController extends RefreshedContextAttacher {
                 postTarget = new TeeOutputStream(postTarget, bytesStream);
             }
 
+            // TODO handle large content sizes - see http://stackoverflow.com/questions/2793150/how-to-use-java-net-urlconnection-to-fire-and-handle-http-requests
+            // TODO consider switching to Apache HTTP client
             try {
                 long    cpyLen=IOUtils.copyLarge(postData, postTarget);
                 if (logger.isTraceEnabled()) {
-                    final URL   url=conn.getURL();
                     logger.trace("transferPostedData(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                                + " copied " + cpyLen + " bytes (encoding=" + encoding + ")"
                                + " to " + url.toExternalForm());
@@ -298,52 +300,62 @@ public class GitController extends RefreshedContextAttacher {
     private void transferBackendResponse(
             final RequestMethod method, final HttpServletRequest req, HttpServletResponse rsp, HttpURLConnection conn, Map<String,String>  rspHeaders)
                     throws IOException {
-        InputStream rspData=conn.getInputStream();
+        final URL       url=conn.getURL();
+        OutputStream    rspTarget=rsp.getOutputStream();
         try {
-            ByteArrayOutputStream   bytesStream=null;
-            OutputStream            rspTarget=rsp.getOutputStream(), logStream=null;
-            String                  encoding=rspHeaders.get("Content-Encoding");
-            if (logger.isTraceEnabled()) {
-                logStream = new AsciiLineOutputStream() {
-                        @Override
-                        @SuppressWarnings("synthetic-access")
-                        public void writeLineData(CharSequence lineData) throws IOException {
-                            logger.trace("transferBackendResponse(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                                       + " S: " + lineData);
-                        }
-
-                        @Override
-                        public boolean isWriteEnabled() {
-                            return true;
-                        }
-                    };
-                if ("gzip".equalsIgnoreCase(encoding)) {
-                    bytesStream = new ByteArrayOutputStream();
-                }
-                rspTarget = new TeeOutputStream(rspTarget, (bytesStream == null) ? logStream : bytesStream);
-            }
-
+            InputStream rspData=conn.getInputStream();
             try {
-                long    cpyLen=IOUtils.copyLarge(rspData, rspTarget);
+                ByteArrayOutputStream   bytesStream=null;
+                OutputStream            logStream=null;
+                String                  encoding=rspHeaders.get("Content-Encoding");
                 if (logger.isTraceEnabled()) {
-                    URL url=conn.getURL();
-                    logger.trace("transferBackendResponse(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                               + " copied " + cpyLen + " bytes from " + url.toExternalForm());
-                    
-                    if (bytesStream != null) {
-                        InputStream gzStream=new GZIPInputStream(new ByteArrayInputStream(bytesStream.toByteArray()));
-                        try {
-                            IOUtils.copyLarge(gzStream, logStream);
-                        } finally {
-                            gzStream.close();
-                        }
+                    logStream = new AsciiLineOutputStream() {
+                            @Override
+                            @SuppressWarnings("synthetic-access")
+                            public void writeLineData(CharSequence lineData) throws IOException {
+                                logger.trace("transferBackendResponse(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                           + " S: " + lineData);
+                            }
+    
+                            @Override
+                            public boolean isWriteEnabled() {
+                                return true;
+                            }
+                        };
+                    if ("gzip".equalsIgnoreCase(encoding)) {
+                        bytesStream = new ByteArrayOutputStream();
                     }
+                    rspTarget = new TeeOutputStream(rspTarget, (bytesStream == null) ? logStream : bytesStream);
+                }
+    
+                try {
+                    long    cpyLen=IOUtils.copyLarge(rspData, rspTarget);
+                    if (logger.isTraceEnabled()) {
+                        try {
+                            if (bytesStream != null) {
+                                InputStream gzStream=new GZIPInputStream(new ByteArrayInputStream(bytesStream.toByteArray()));
+                                try {
+                                    IOUtils.copyLarge(gzStream, logStream);
+                                } finally {
+                                    gzStream.close();
+                                }
+                            }
+                        } finally {
+                            logStream.close();  // flush the remaining data in the log stream
+                        }
+
+                        logger.trace("transferBackendResponse(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                   + " copied " + cpyLen + " bytes from " + url.toExternalForm());
+                        
+                    }
+                } finally {
+                    ExtendedIOUtils.closeAll(logStream, bytesStream);
                 }
             } finally {
-                ExtendedIOUtils.closeAll(rspTarget, logStream, bytesStream);
+                rspData.close();
             }
         } finally {
-            rspData.close();
+            rspTarget.close();
         }
     }
 
@@ -389,6 +401,8 @@ public class GitController extends RefreshedContextAttacher {
 
         conn.setConnectTimeout(urlRedirectConnectTimeout);
         conn.setReadTimeout(urlRedirectReadTimeout);
+        conn.setAllowUserInteraction(false);
+        conn.setUseCaches(false);
         conn.setRequestMethod(method.name());
         
         if (RequestMethod.POST.equals(method)) {
@@ -407,12 +421,18 @@ public class GitController extends RefreshedContextAttacher {
                 logger.warn("copyRequestHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                           + " no value for header " + hdrName);
                 
-            } else if (logger.isTraceEnabled()) {
-                logger.trace("copyRequestHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                           + " " + hdrName + ": " + hdrValue);
             }
 
             conn.setRequestProperty(hdrName, hdrValue);
+            hdrsMap.put(hdrName, hdrValue);
+        }
+
+        if (logger.isTraceEnabled()) {
+            for (Map.Entry<String,String> hdrEntry : hdrsMap.entrySet()) {
+                String  hdrName=hdrEntry.getKey(), hdrValue=hdrEntry.getValue();
+                logger.trace("copyRequestHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                           + " " + hdrName + ": " + hdrValue);
+            }
         }
 
         return hdrsMap;
@@ -421,7 +441,7 @@ public class GitController extends RefreshedContextAttacher {
     // TODO move this to some generic util location
     private Map<String,String> copyResponseHeadersValues(HttpURLConnection conn, HttpServletRequest req, HttpServletResponse rsp) {
         // NOTE: map must be case insensitive as per HTTP requirements
-        Map<String,String>          hdrsValues=new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
+        Map<String,String>          hdrsMap=new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
         Map<String,List<String>>    headerFields=conn.getHeaderFields();
         for (Map.Entry<String,List<String>> hdr : headerFields.entrySet()) {
             String  hdrName=ServletUtils.capitalizeHttpHeaderName(hdr.getKey());
@@ -447,13 +467,8 @@ public class GitController extends RefreshedContextAttacher {
                     continue;
                 }
 
-                if (logger.isTraceEnabled()) {
-                    logger.trace("copyResponseHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                               + " " + hdrName + ": " + hdrValue);
-                }
-
                 rsp.setHeader(hdrName, hdrValue);
-                hdrsValues.put(hdrName, hdrValue);
+                hdrsMap.put(hdrName, hdrValue);
             } else {
                 for (int index=0; index < values.size(); index++) {
                     String  hdrValue=values.get(index);
@@ -462,17 +477,21 @@ public class GitController extends RefreshedContextAttacher {
                     }
 
                     rsp.addHeader(hdrName, hdrValue);
-                    if (logger.isTraceEnabled()) {
-                        logger.trace("copyResponseHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                                   + " " + hdrName + "[" + index + "]: " + hdrValue);
-                    }
                 }
 
-                hdrsValues.put(hdrName, StringUtils.join(values, ','));
+                hdrsMap.put(hdrName, StringUtils.join(values, ','));
             }
         }
         
-        return hdrsValues;
+        if (logger.isTraceEnabled()) {
+            for (Map.Entry<String,String> hdrEntry : hdrsMap.entrySet()) {
+                String  hdrName=hdrEntry.getKey(), hdrValue=hdrEntry.getValue();
+                logger.trace("copyResponseHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                           + " " + hdrName + ": " + hdrValue);
+            }
+        }
+
+        return hdrsMap;
     }
 
     // TODO move this to some generic util location
