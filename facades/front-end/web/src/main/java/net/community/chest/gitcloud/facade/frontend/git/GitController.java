@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.logging.Level;
@@ -43,6 +44,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import net.community.chest.gitcloud.facade.ServletUtils;
 
+import org.apache.commons.collections15.SetUtils;
 import org.apache.commons.io.ExtendedIOUtils;
 import org.apache.commons.io.HexDump;
 import org.apache.commons.io.IOUtils;
@@ -60,8 +62,9 @@ import org.apache.http.HttpMessage;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.ProtocolException;
-import org.apache.http.client.HttpClient;
+import org.apache.http.StatusLine;
 import org.apache.http.client.RedirectStrategy;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -71,9 +74,12 @@ import org.apache.http.conn.HttpClientConnectionManager;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.protocol.HTTP;
 import org.apache.http.protocol.HttpContext;
+import org.apache.http.util.EntityUtils;
 import org.eclipse.jgit.http.server.GitSmartHttpTools;
 import org.eclipse.jgit.lib.Constants;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.RefreshedContextAttacher;
@@ -87,7 +93,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
  * @since Sep 12, 2013 1:17:34 PM
  */
 @Controller // TODO make it a @ManagedObject and expose internal configuration values for JMX management (Read/Write)
-public class GitController extends RefreshedContextAttacher {
+public class GitController extends RefreshedContextAttacher implements DisposableBean {
     public static final Set<String> ALLOWED_SERVICES=
             Collections.unmodifiableSet(
                     new TreeSet<String>(
@@ -101,7 +107,7 @@ public class GitController extends RefreshedContextAttacher {
                                             + SystemPropertyUtils.PLACEHOLDER_SUFFIX;
 
     private final MBeanServer   mbeanServer;
-    private final HttpClientConnectionManager   connsManager;
+    private final CloseableHttpClient   client;
     private final long  loopRetryTimeout;
     private volatile long    initTimestamp=System.currentTimeMillis();
     private volatile boolean    loopDetected;
@@ -111,8 +117,19 @@ public class GitController extends RefreshedContextAttacher {
             HttpClientConnectionManager connectionsManager,
             @Value(LOOP_DETECT_TIMEOUT_VALUE) long loopDetectTimeout) {
         mbeanServer = Validate.notNull(localMbeanServer, "No MBean server", ArrayUtils.EMPTY_OBJECT_ARRAY);
-        connsManager = Validate.notNull(connectionsManager, "No connections manager", ArrayUtils.EMPTY_OBJECT_ARRAY);
+        
+        client = HttpClientBuilder.create()
+                    .setConnectionManager(Validate.notNull(connectionsManager, "No connections manager", ArrayUtils.EMPTY_OBJECT_ARRAY))
+                    .setRedirectStrategy(NO_REDIRECTION)
+                    .build()
+                    ;
         loopRetryTimeout = loopDetectTimeout;
+    }
+
+    @Override
+    public void destroy() throws Exception {
+        logger.info("destroy()");
+        client.close();
     }
 
     @Override
@@ -218,33 +235,42 @@ public class GitController extends RefreshedContextAttacher {
                        + " redirected to " + uri.toASCIIString());
         }
 
-        HttpRequestBase     request=resolveRequest(method, uri);
-        CloseableHttpClient client=HttpClientBuilder.create()
-                                .setConnectionManager(connsManager)
-                                .setRedirectStrategy(NO_REDIRECTION)
-                                .build()
-                                ;
-        try {
-            executeRemoteRequest(client, request, req, rsp);
-        } finally {
-            client.close();
-        }
+        HttpRequestBase request=resolveRequest(method, uri);
+        executeRemoteRequest(request, req, rsp);
     }
 
-    private void executeRemoteRequest(HttpClient client, HttpRequestBase request, HttpServletRequest req, HttpServletResponse rsp) throws IOException {
+    private StatusLine executeRemoteRequest(HttpRequestBase request, HttpServletRequest req, HttpServletResponse rsp) throws IOException {
         Map<String,String>  reqHeaders=copyRequestHeadersValues(req, request);
-        final HttpResponse  response;
+        final CloseableHttpResponse  response;
         if (HttpPost.METHOD_NAME.equalsIgnoreCase(request.getMethod())) {
-            response = transferPostedData(client, (HttpEntityEnclosingRequestBase) request, req, reqHeaders);
+            response = transferPostedData((HttpEntityEnclosingRequestBase) request, req, reqHeaders);
         } else {
             response = client.execute(request);
         }
         
-        Map<String,String>  rspHeaders=copyResponseHeadersValues(req, response, rsp);
-        transferBackendResponse(req, response, rsp, rspHeaders);
+        try {
+            HttpEntity  rspEntity=response.getEntity();
+            StatusLine  statusLine=response.getStatusLine();
+            int         statusCode=statusLine.getStatusCode();
+            if ((statusCode < HttpServletResponse.SC_OK) || (statusCode >= 300)) {
+                String  reason=StringUtils.trimToEmpty(statusLine.getReasonPhrase());
+                logger.warn("executeRemoteRequest(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                         +  " bad response (" + statusCode + ") from remote end: " + reason);
+                EntityUtils.consume(rspEntity);
+                rsp.sendError(statusCode, reason);
+            } else {
+                rsp.setStatus(statusCode);
+                Map<String,String>  rspHeaders=copyResponseHeadersValues(req, response, rsp);
+                transferBackendResponse(req, rspEntity, rsp, rspHeaders);
+            }
+            
+            return statusLine;
+        } finally {
+            response.close();
+        }
     }
 
-    private HttpResponse transferPostedData(HttpClient client, HttpEntityEnclosingRequestBase postRequest, final HttpServletRequest req, Map<String,String> reqHeaders)
+    private CloseableHttpResponse transferPostedData(HttpEntityEnclosingRequestBase postRequest, final HttpServletRequest req, Map<String,String> reqHeaders)
             throws IOException {
         InputStream postData=req.getInputStream();
         try {
@@ -254,7 +280,7 @@ public class GitController extends RefreshedContextAttacher {
             }
             postRequest.setEntity(new InputStreamEntity(postData));
 
-            HttpResponse    response=client.execute(postRequest);
+            CloseableHttpResponse    response=client.execute(postRequest);
             if (logger.isTraceEnabled() && (postData instanceof ByteArrayAccumulatingInputStream)) {
                 final String    method=postRequest.getMethod(), encoding=reqHeaders.get("Content-Encoding");
                 byte[]          postedBytes=((ByteArrayAccumulatingInputStream) postData).toByteArray();
@@ -296,7 +322,7 @@ public class GitController extends RefreshedContextAttacher {
         }
     }
 
-    private void transferBackendResponse(final HttpServletRequest req, HttpResponse response, HttpServletResponse rsp, Map<String,String>  rspHeaders)
+    private void transferBackendResponse(final HttpServletRequest req, HttpEntity rspEntity, HttpServletResponse rsp, Map<String,String>  rspHeaders)
                     throws IOException {
         final String    method=req.getMethod();
         OutputStream    rspTarget=rsp.getOutputStream();
@@ -326,7 +352,6 @@ public class GitController extends RefreshedContextAttacher {
                     rspTarget = new TeeOutputStream(rspTarget, (bytesStream == null) ? logStream : bytesStream);
                 }
 
-                HttpEntity  rspEntity=response.getEntity();
                 rspEntity.writeTo(rspTarget);
 
                 if (logger.isTraceEnabled()) {
@@ -386,6 +411,17 @@ public class GitController extends RefreshedContextAttacher {
         }
     }
 
+    // see RequestContent#process method
+    public static final SortedSet<String>   FILTERED_REQUEST_HEADERS=
+            SetUtils.unmodifiableSortedSet(new TreeSet<String>(String.CASE_INSENSITIVE_ORDER) {
+                // we're not serializing it anywhere
+                private static final long serialVersionUID = 1L;
+
+                {
+                    add(HTTP.TRANSFER_ENCODING);
+                    add(HTTP.CONTENT_LEN);
+                }
+            });
     // TODO move this to some generic util location
     private Map<String,String> copyRequestHeadersValues(HttpServletRequest req, HttpRequestBase request) {
         Map<String,String>  hdrsMap=ServletUtils.getRequestHeaders(req);
@@ -397,8 +433,15 @@ public class GitController extends RefreshedContextAttacher {
                 
             }
 
-            request.addHeader(hdrName, hdrValue);
-            hdrsMap.put(hdrName, hdrValue);
+            if (FILTERED_REQUEST_HEADERS.contains(hdrName)) {
+                if (logger.isTraceEnabled()) {
+                    logger.trace("copyRequestHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                               + " filtered " + hdrName + ": " + hdrValue);
+                }                
+            } else {
+                request.addHeader(hdrName, hdrValue);
+                hdrsMap.put(hdrName, hdrValue);
+            }
         }
 
         if (logger.isTraceEnabled()) {
