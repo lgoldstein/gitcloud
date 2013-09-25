@@ -14,7 +14,6 @@
  */
 package net.community.chest.gitcloud.facade.frontend.git;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -29,7 +28,6 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.logging.Level;
-import java.util.zip.GZIPInputStream;
 
 import javax.inject.Inject;
 import javax.management.JMException;
@@ -45,12 +43,9 @@ import javax.servlet.http.HttpServletResponse;
 import net.community.chest.gitcloud.facade.ServletUtils;
 
 import org.apache.commons.collections15.SetUtils;
-import org.apache.commons.io.ExtendedIOUtils;
-import org.apache.commons.io.HexDump;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.input.ByteArrayAccumulatingInputStream;
-import org.apache.commons.io.output.AsciiLineOutputStream;
-import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.commons.io.HexDumpOutputStream;
+import org.apache.commons.io.input.TeeInputStream;
+import org.apache.commons.io.output.LineLevelAppender;
 import org.apache.commons.io.output.TeeOutputStream;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -240,10 +235,11 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
     }
 
     private StatusLine executeRemoteRequest(HttpRequestBase request, HttpServletRequest req, HttpServletResponse rsp) throws IOException {
-        Map<String,String>  reqHeaders=copyRequestHeadersValues(req, request);
+        copyRequestHeadersValues(req, request);
+
         final CloseableHttpResponse  response;
         if (HttpPost.METHOD_NAME.equalsIgnoreCase(request.getMethod())) {
-            response = transferPostedData((HttpEntityEnclosingRequestBase) request, req, reqHeaders);
+            response = transferPostedData((HttpEntityEnclosingRequestBase) request, req);
         } else {
             response = client.execute(request);
         }
@@ -260,8 +256,8 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
                 rsp.sendError(statusCode, reason);
             } else {
                 rsp.setStatus(statusCode);
-                Map<String,String>  rspHeaders=copyResponseHeadersValues(req, response, rsp);
-                transferBackendResponse(req, rspEntity, rsp, rspHeaders);
+                copyResponseHeadersValues(req, response, rsp);
+                transferBackendResponse(req, rspEntity, rsp);
             }
             
             return statusLine;
@@ -270,38 +266,16 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
         }
     }
 
-    private CloseableHttpResponse transferPostedData(HttpEntityEnclosingRequestBase postRequest, final HttpServletRequest req, Map<String,String> reqHeaders)
+    private CloseableHttpResponse transferPostedData(HttpEntityEnclosingRequestBase postRequest, final HttpServletRequest req)
             throws IOException {
         InputStream postData=req.getInputStream();
         try {
-            // TODO see what we can do for large amount of data
             if (logger.isTraceEnabled()) {
-                postData = new ByteArrayAccumulatingInputStream(postData);
-            }
-            postRequest.setEntity(new InputStreamEntity(postData));
-
-            CloseableHttpResponse    response=client.execute(postRequest);
-            if (logger.isTraceEnabled() && (postData instanceof ByteArrayAccumulatingInputStream)) {
-                final String    method=postRequest.getMethod(), encoding=reqHeaders.get("Content-Encoding");
-                byte[]          postedBytes=((ByteArrayAccumulatingInputStream) postData).toByteArray();
-                logger.trace("transferPostedData(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                           + " copied " + postedBytes.length + " bytes (encoding=" + encoding + ")"
-                           + " to " + postRequest.getURI().toASCIIString());
-
-                if ("gzip".equalsIgnoreCase(encoding)) {
-                    InputStream gzStream=new GZIPInputStream(new ByteArrayInputStream(postedBytes));
-                    try {
-                        postedBytes = IOUtils.toByteArray(gzStream);
-                    } finally {
-                        gzStream.close();
-                    }
-                }
-
-                AsciiLineOutputStream   logStream=new AsciiLineOutputStream() {
+                LineLevelAppender   appender=new LineLevelAppender() {
                         @Override
                         @SuppressWarnings("synthetic-access")
                         public void writeLineData(CharSequence lineData) throws IOException {
-                            logger.trace("transferPostedData(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "] C: " + lineData);
+                            logger.trace("transferPostedData(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "] C: " + lineData);
                         }
                         
                         @Override
@@ -309,68 +283,38 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
                             return true;
                         }
                     };
-                try {
-                    HexDump.dump(postedBytes, 0L, logStream, 0);
-                } finally {
-                    logStream.close();
-                }
+                postData = new TeeInputStream(postData, new HexDumpOutputStream(appender), true);
             }
-            
-            return response;
+            postRequest.setEntity(new InputStreamEntity(postData));
+            return client.execute(postRequest);
         } finally {
             postData.close();
         }
     }
 
-    private void transferBackendResponse(final HttpServletRequest req, HttpEntity rspEntity, HttpServletResponse rsp, Map<String,String>  rspHeaders)
+    private void transferBackendResponse(final HttpServletRequest req, HttpEntity rspEntity, HttpServletResponse rsp)
                     throws IOException {
         final String    method=req.getMethod();
         OutputStream    rspTarget=rsp.getOutputStream();
         try {
-            ByteArrayOutputStream   bytesStream=null;
-            OutputStream            logStream=null;
-            String                  encoding=rspHeaders.get("Content-Encoding");
-            try {
-                // TODO see what we can do for large amount of data
-                if (logger.isTraceEnabled()) {
-                    logStream = new AsciiLineOutputStream() {
-                            @Override
-                            @SuppressWarnings("synthetic-access")
-                            public void writeLineData(CharSequence lineData) throws IOException {
-                                logger.trace("transferBackendResponse(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                                           + " S: " + lineData);
-                            }
-    
-                            @Override
-                            public boolean isWriteEnabled() {
-                                return true;
-                            }
-                        };
-                    if ("gzip".equalsIgnoreCase(encoding)) {
-                        bytesStream = new ByteArrayOutputStream();
-                    }
-                    rspTarget = new TeeOutputStream(rspTarget, (bytesStream == null) ? logStream : bytesStream);
-                }
-
-                rspEntity.writeTo(rspTarget);
-
-                if (logger.isTraceEnabled()) {
-                    try {
-                        if (bytesStream != null) {
-                            InputStream gzStream=new GZIPInputStream(new ByteArrayInputStream(bytesStream.toByteArray()));
-                            try {
-                                IOUtils.copyLarge(gzStream, logStream);
-                            } finally {
-                                gzStream.close();
-                            }
+            if (logger.isTraceEnabled()) {
+                LineLevelAppender   appender=new LineLevelAppender() {
+                        @Override
+                        @SuppressWarnings("synthetic-access")
+                        public void writeLineData(CharSequence lineData) throws IOException {
+                            logger.trace("transferBackendResponse(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                                       + " S: " + lineData);
                         }
-                    } finally {
-                        logStream.close();  // flush the remaining data in the log stream
-                    }
-                }
-            } finally {
-                ExtendedIOUtils.closeAll(logStream, bytesStream);
+
+                        @Override
+                        public boolean isWriteEnabled() {
+                            return true;
+                        }
+                    };
+                rspTarget = new TeeOutputStream(rspTarget, new HexDumpOutputStream(appender));
             }
+
+            rspEntity.writeTo(rspTarget);
         } finally {
             rspTarget.close();
         }

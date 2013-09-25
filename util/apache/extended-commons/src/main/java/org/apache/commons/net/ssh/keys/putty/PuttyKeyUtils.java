@@ -323,7 +323,7 @@ public class PuttyKeyUtils {
         String      pubData=headers.get(PPK_PUBLIC_DATA_HEADER);
         PublicKey   pubKey;
         try {
-            pubKey = KeyUtils.decodePublicKey(pubData);
+            pubKey = KeyUtils.decodeOpenSSHPublicKey(pubData);
         } catch(IOException e) {
             throw new InvalidKeySpecException("Failed (" + e.getClass().getSimpleName() + ")"
                                             + " to decode public key:" + e.getMessage(), e);

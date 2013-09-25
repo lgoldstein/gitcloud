@@ -87,6 +87,32 @@ public class ExtendedHex extends Hex {
         return sb;
     }
 
+    public static final <A extends Appendable> A appendHex(A sb, boolean toLowerCase, short value) throws IOException {
+        appendHex(sb, toLowerCase, (byte) (value >>  8));
+        appendHex(sb, toLowerCase, (byte) (value & 0xFF));
+        return sb;
+    }
+
+    public static final <A extends Appendable> A appendHex(A sb, boolean toLowerCase, int value) throws IOException {
+        appendHex(sb, toLowerCase, (byte) (value >> 24));
+        appendHex(sb, toLowerCase, (byte) (value >> 16));
+        appendHex(sb, toLowerCase, (byte) (value >>  8));
+        appendHex(sb, toLowerCase, (byte) (value & 0xFF));
+        return sb;
+    }
+
+    public static final <A extends Appendable> A appendHex(A sb, boolean toLowerCase, long value) throws IOException {
+        appendHex(sb, toLowerCase, (byte) (value >> 56));
+        appendHex(sb, toLowerCase, (byte) (value >> 48));
+        appendHex(sb, toLowerCase, (byte) (value >> 40));
+        appendHex(sb, toLowerCase, (byte) (value >> 32));
+        appendHex(sb, toLowerCase, (byte) (value >> 24));
+        appendHex(sb, toLowerCase, (byte) (value >> 16));
+        appendHex(sb, toLowerCase, (byte) (value >>  8));
+        appendHex(sb, toLowerCase, (byte) (value & 0xFF));
+        return sb;
+    }
+
     public static final <A extends Appendable> A appendHex(A sb, boolean toLowerCase, byte value) throws IOException {
         appendHexChar(sb, toLowerCase, (value >> 4) & 0x0F);
         appendHexChar(sb, toLowerCase, value & 0x0F);
@@ -110,5 +136,4 @@ public class ExtendedHex extends Hex {
             return new String(encodeHex(data, toLowerCase));
         }
     }
-
 }

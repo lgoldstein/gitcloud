@@ -1,52 +1,49 @@
-/* Copyright 2013 Lyor Goldstein
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.io.output;
+
+package org.apache.commons.io.input;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.output.LineLevelAppender;
+import org.apache.commons.io.output.NullWriter;
 import org.apache.commons.test.AbstractTestSupport;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
 /**
- * @author Lyor Goldstein
- * @since Sep 15, 2013 11:25:45 AM
+ * @author Lyor G.
+ * @since Sep 15, 2013 12:25:49 PM
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class LineOutputStreamTest extends AbstractTestSupport {
-    public LineOutputStreamTest() {
+public class LineReaderTest extends AbstractTestSupport {
+    public LineReaderTest() {
         super();
     }
 
     @Test
-    public void testLineOutputStream() throws IOException {
-        testStreamCorrectness(false);
-    }
-    
-    @Test
-    public void testAsciiLineOutputStream() throws IOException {
-        testStreamCorrectness(true);
-    }
-    
-    private void testStreamCorrectness(boolean useAsciiStream) throws IOException {
+    public void testReaderCorrectness() throws IOException {
         File    file=getTestJavaSourceFile();
         assertNotNull("Cannot locate test file", file);
         
@@ -63,12 +60,12 @@ public class LineOutputStreamTest extends AbstractTestSupport {
                     return true;
                 }
             };
-        OutputStream        output=useAsciiStream ? new AsciiLineOutputStream(appender) : new LineOutputStream(appender);
+        LineReader    input=new LineReader(new FileReader(file), appender);
         try {
-            long    cpySize=FileUtils.copyFile(file, output);
+            long    cpySize=IOUtils.copyLarge(input, NullWriter.NULL_WRITER);
             assertEquals("Mismatched copy size for " + file, file.length(), cpySize);
         } finally {
-            output.close();
+            input.close();
         }
         
         assertEquals("Mismatched number of lines", expected.size(), actual.size());

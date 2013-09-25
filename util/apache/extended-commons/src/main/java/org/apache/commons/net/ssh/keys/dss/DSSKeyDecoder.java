@@ -18,6 +18,7 @@ package org.apache.commons.net.ssh.keys.dss;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.StreamCorruptedException;
 import java.math.BigInteger;
 import java.security.GeneralSecurityException;
@@ -25,6 +26,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.interfaces.DSAParams;
 import java.security.interfaces.DSAPrivateKey;
+import java.security.interfaces.DSAPublicKey;
 import java.security.spec.DSAPrivateKeySpec;
 import java.security.spec.DSAPublicKeySpec;
 import java.security.spec.InvalidKeySpecException;
@@ -33,10 +35,14 @@ import org.apache.commons.collections15.AbstractExtendedPredicate;
 import org.apache.commons.collections15.ExtendedPredicate;
 import org.apache.commons.collections15.Predicate;
 import org.apache.commons.io.input.ExtendedCloseShieldInputStream;
+import org.apache.commons.io.output.ExtendedCloseShieldOutputStream;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
 import org.apache.commons.net.ssh.der.ASN1Object;
 import org.apache.commons.net.ssh.der.ASN1Type;
 import org.apache.commons.net.ssh.der.DERParser;
+import org.apache.commons.net.ssh.der.DERWriter;
 import org.apache.commons.net.ssh.keys.AbstractKeyDecoder;
 
 /**
@@ -61,7 +67,7 @@ public class DSSKeyDecoder extends AbstractKeyDecoder {
                 }
             };
 
-    public static final String PEM_DSS_END_MARKER="--END DSA PRIVATE KEY-";
+    public static final String PEM_DSS_END_MARKER="-END DSA PRIVATE KEY-";
     public static final ExtendedPredicate<String>   END_MARKER=
             new AbstractExtendedPredicate<String>(String.class) {
                 @Override
@@ -83,7 +89,7 @@ public class DSSKeyDecoder extends AbstractKeyDecoder {
     }
 
     @Override
-    public PublicKey decodePublicKey(InputStream s) throws IOException {
+    public PublicKey decodeOpenSSHPublicKey(InputStream s) throws IOException {
         BigInteger  p=decodeBigInt(s);
         BigInteger  q=decodeBigInt(s);
         BigInteger  g=decodeBigInt(s);
@@ -94,6 +100,20 @@ public class DSSKeyDecoder extends AbstractKeyDecoder {
         } catch(GeneralSecurityException t) {
             throw new IOException("Failed (" + t.getClass().getSimpleName() + ") to generate key: " + t.getMessage(), t);
         }
+    }
+
+    @Override
+    public void encodeOpenSSHPublicKeyData(OutputStream s, PublicKey key) throws IOException {
+        if (!(key instanceof DSAPublicKey)) {
+            throw new StreamCorruptedException("Non matching key type");
+        }
+        
+        DSAPublicKey    dsaKey=(DSAPublicKey) key;
+        DSAParams       keyParams=dsaKey.getParams();
+        encodeBigInt(s, keyParams.getP());
+        encodeBigInt(s, keyParams.getQ());
+        encodeBigInt(s, keyParams.getG());
+        encodeBigInt(s, dsaKey.getY());
     }
 
     // based on code from http://www.jarvana.com/jarvana/view/org/opensaml/xmltooling/1.3.1/xmltooling-1.3.1-sources.jar!/org/opensaml/xml/security/SecurityHelper.java?format=ok
@@ -121,6 +141,18 @@ public class DSSKeyDecoder extends AbstractKeyDecoder {
     }
 
     @Override
+    public <A extends Appendable> A appendPEMBeginMarker(A sb) throws IOException {
+        sb.append("----").append(PEM_DSS_BEGIN_MARKER).append("----");
+        return sb;
+    }
+
+    @Override
+    public <A extends Appendable> A appendPEMEndMarker(A sb) throws IOException {
+        sb.append("----").append(PEM_DSS_END_MARKER).append("----");
+        return sb;
+    }
+
+    @Override
     public PrivateKey decodePEMPrivateKey(InputStream s, boolean okToClose, String password) throws IOException {
         try {
             if (StringUtils.isEmpty(password)) {
@@ -130,6 +162,15 @@ public class DSSKeyDecoder extends AbstractKeyDecoder {
             }
         } catch(GeneralSecurityException t) {
             throw new IOException("Failed (" + t.getClass().getSimpleName() + ") to generate key: " + t.getMessage(), t);
+        }
+    }
+
+    @Override
+    public void encodePEMPrivateKey(PrivateKey key, OutputStream s, boolean okToClose, String password) throws IOException {
+        if (StringUtils.isEmpty(password)) {
+            encodeDSSKey((DSAPrivateKey) key, s, okToClose);
+        } else {
+            throw new StreamCorruptedException("Encode key with password protection N/A");
         }
     }
 
@@ -182,6 +223,29 @@ public class DSSKeyDecoder extends AbstractKeyDecoder {
             return new DSAPrivateKeySpec(x, p, q, g);
         } finally {
             parser.close();
+        }
+    }
+    
+    public static final void encodeDSSKey(DSAPrivateKey key, OutputStream s, boolean okToClose) throws IOException {
+        Validate.notNull(key, "No private key", ArrayUtils.EMPTY_OBJECT_ARRAY);
+
+        DSAParams   params=key.getParams();
+        BigInteger  p=params.getP(), x=key.getX(), g=params.getG(), y=g.modPow(x, p);
+        DERWriter   w=new DERWriter(ExtendedCloseShieldOutputStream.resolveOutputStream(s, okToClose));
+        try {
+            DERWriter   seq=w.startSequence();
+            try {
+                seq.writeBigInteger(BigInteger.ZERO);   // version
+                seq.writeBigInteger(p);
+                seq.writeBigInteger(params.getQ());
+                seq.writeBigInteger(g);
+                seq.writeBigInteger(y);
+                seq.writeBigInteger(x);
+            } finally {
+                seq.close();
+            }
+        } finally {
+            w.close();
         }
     }
 }

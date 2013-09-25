@@ -65,7 +65,7 @@ public class CryptoKeyEntryTest extends AbstractTestSupport {
         assertFalse("No entries read", ExtendedCollectionUtils.isEmpty(entries));
         
         for (CryptoKeyEntry entry : entries) {
-            PublicKey   key=entry.decodePublicKey();
+            PublicKey   key=entry.decodeOpenSSHPublicKey();
             String      eValue=entry.toString();
             assertNotNull("No key: " + eValue, key);
             assertEquals("Mismatched algorithm: " + eValue,

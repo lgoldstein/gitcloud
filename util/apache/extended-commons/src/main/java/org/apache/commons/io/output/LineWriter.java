@@ -20,8 +20,10 @@ import java.io.IOException;
 import java.io.Writer;
 import java.nio.channels.Channel;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ExtendedArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
 
 /**
  * <P>Accumulates all written data into a work buffer and calls the actual
@@ -29,12 +31,17 @@ import org.apache.commons.lang3.StringUtils;
  * @author Lyor G.
  * @since Aug 13, 2013 7:37:51 AM
  */
-public abstract class LineWriter extends Writer implements Channel, LineLevelAppender  {
+public class LineWriter extends Writer implements Channel  {
     private StringBuilder   _workBuf;
     private boolean _closed /* =false */;
+    protected final LineLevelAppender   _appender;
 
-    protected LineWriter () {
-        super();
+    public LineWriter (LineLevelAppender appender) {
+        _appender = Validate.notNull(appender, "No appender", ArrayUtils.EMPTY_OBJECT_ARRAY);
+    }
+
+    public final LineLevelAppender getLineLevelAppender() {
+        return _appender;
     }
 
     @Override
@@ -57,7 +64,8 @@ public abstract class LineWriter extends Writer implements Channel, LineLevelApp
             throw new IOException("append(" + CharSequence.class.getSimpleName() + ")[" + start + " - " + end + "] not open");
         }
 
-        if (!isWriteEnabled()) {
+        LineLevelAppender appender=getLineLevelAppender();
+        if (!appender.isWriteEnabled()) {
             clearWorkBuffer();
             return this;
         }
@@ -100,7 +108,8 @@ public abstract class LineWriter extends Writer implements Channel, LineLevelApp
             throw new IOException("append(char=" + String.valueOf(c) + ") not open");
         }
 
-        if (!isWriteEnabled()) {
+        LineLevelAppender appender=getLineLevelAppender();
+        if (!appender.isWriteEnabled()) {
             clearWorkBuffer();
             return this;
         }
@@ -124,7 +133,8 @@ public abstract class LineWriter extends Writer implements Channel, LineLevelApp
             return;
         }
 
-        if (!isWriteEnabled()) {
+        LineLevelAppender appender=getLineLevelAppender();
+        if (!appender.isWriteEnabled()) {
             clearWorkBuffer();
             return;
         }
@@ -185,14 +195,19 @@ public abstract class LineWriter extends Writer implements Channel, LineLevelApp
     public void close () throws IOException {
         if (isOpen()) {
             try {   // check if any leftovers
-                StringBuilder    buf=getWorkBuffer(0);
+                StringBuilder   buf=getWorkBuffer(0);
                 int             dLen=buf.length();
                 if (dLen > 0) {
                     if (buf.charAt(dLen - 1) == '\r') {
                         buf.setLength(dLen - 1);
                     }
                     
-                    writeLineData(buf);
+                    try {
+                        LineLevelAppender appender=getLineLevelAppender();
+                        appender.writeLineData(buf);
+                    } finally {
+                        buf.setLength(0);
+                    }
                 }
             } finally {
                 _closed = true;
@@ -266,7 +281,8 @@ public abstract class LineWriter extends Writer implements Channel, LineLevelApp
 
         sb.setLength(dLen);
         try {
-            writeLineData(sb);
+            LineLevelAppender appender=getLineLevelAppender();
+            appender.writeLineData(sb);
         } finally {
             sb.setLength(0);
         }

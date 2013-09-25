@@ -18,12 +18,14 @@ package org.apache.commons.net.ssh.keys.rsa;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.StreamCorruptedException;
 import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPrivateCrtKeySpec;
 import java.security.spec.RSAPublicKeySpec;
@@ -32,10 +34,14 @@ import org.apache.commons.collections15.AbstractExtendedPredicate;
 import org.apache.commons.collections15.ExtendedPredicate;
 import org.apache.commons.collections15.Predicate;
 import org.apache.commons.io.input.ExtendedCloseShieldInputStream;
+import org.apache.commons.io.output.ExtendedCloseShieldOutputStream;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
 import org.apache.commons.net.ssh.der.ASN1Object;
 import org.apache.commons.net.ssh.der.ASN1Type;
 import org.apache.commons.net.ssh.der.DERParser;
+import org.apache.commons.net.ssh.der.DERWriter;
 import org.apache.commons.net.ssh.keys.AbstractKeyDecoder;
 
 /**
@@ -83,18 +89,11 @@ public class RSAKeyDecoder extends AbstractKeyDecoder {
     }
 
     /**
-     * <p>The ASN.1 syntax for the private key as per RFC-3447 section A.1.1:</P>
-     * <pre>
-     * RSAPublicKey ::= SEQUENCE {
-     *      modulus           INTEGER,  -- n
-     *      publicExponent    INTEGER   -- e
-     * }
-     * </pre>
-     * @param s The {@link InputStream}
+     * @param s The {@link InputStream} containing the data in OpenSSH format
      * @return The decoded {@link PublicKey}
      */
     @Override
-    public PublicKey decodePublicKey(InputStream s) throws IOException {
+    public PublicKey decodeOpenSSHPublicKey(InputStream s) throws IOException {
         BigInteger  e=decodeBigInt(s);
         BigInteger  n=decodeBigInt(s);
         try {
@@ -102,6 +101,17 @@ public class RSAKeyDecoder extends AbstractKeyDecoder {
         } catch(GeneralSecurityException t) {
             throw new IOException("Failed (" + t.getClass().getSimpleName() + ") to generate key: " + t.getMessage(), t);
         }
+    }
+
+    @Override
+    public void encodeOpenSSHPublicKeyData(OutputStream s, PublicKey key) throws IOException {
+        if (!(key instanceof RSAPublicKey)) {
+            throw new StreamCorruptedException("Non matching key type");
+        }
+        
+        RSAPublicKey    rsa=(RSAPublicKey) key;
+        encodeBigInt(s, rsa.getPublicExponent());
+        encodeBigInt(s, rsa.getModulus());
     }
 
     @Override
@@ -130,6 +140,15 @@ public class RSAKeyDecoder extends AbstractKeyDecoder {
     }
 
     @Override
+    public void encodePEMPrivateKey(PrivateKey key, OutputStream s, boolean okToClose, String password) throws IOException {
+        if (StringUtils.isEmpty(password)) {
+            encodeRSAKey((RSAPrivateCrtKey) key, s, okToClose);
+        } else {
+            throw new StreamCorruptedException("Encode key with password protection N/A");
+        }
+    }
+
+    @Override
     public Predicate<? super String> getPEMBeginMarker() {
         return BEGIN_MARKER;
     }
@@ -137,6 +156,18 @@ public class RSAKeyDecoder extends AbstractKeyDecoder {
     @Override
     public Predicate<? super String> getPEMEndMarker() {
         return END_MARKER;
+    }
+
+    @Override
+    public <A extends Appendable> A appendPEMBeginMarker(A sb) throws IOException {
+        sb.append("----").append(PEM_RSA_BEGIN_MARKER).append("----");
+        return sb;
+    }
+
+    @Override
+    public <A extends Appendable> A appendPEMEndMarker(A sb) throws IOException {
+        sb.append("----").append(PEM_RSA_END_MARKER).append("----");
+        return sb;
     }
 
     /**
@@ -199,6 +230,30 @@ public class RSAKeyDecoder extends AbstractKeyDecoder {
             return new RSAPrivateCrtKeySpec(modulus, publicExp, privateExp, prime1, prime2, exp1, exp2, crtCoef);
         } finally {
             parser.close();
+        }
+    }
+    
+    public static final void encodeRSAKey(RSAPrivateCrtKey key, OutputStream s, boolean okToClose) throws IOException {
+        Validate.notNull(key, "No private key", ArrayUtils.EMPTY_OBJECT_ARRAY);
+
+        DERWriter   w=new DERWriter(ExtendedCloseShieldOutputStream.resolveOutputStream(s, okToClose));
+        try {
+            DERWriter   seq=w.startSequence();
+            try {
+                seq.writeBigInteger(BigInteger.ZERO);   // version
+                seq.writeBigInteger(key.getModulus());
+                seq.writeBigInteger(key.getPublicExponent());
+                seq.writeBigInteger(key.getPrivateExponent());
+                seq.writeBigInteger(key.getPrimeP());
+                seq.writeBigInteger(key.getPrimeQ());
+                seq.writeBigInteger(key.getPrimeExponentP());
+                seq.writeBigInteger(key.getPrimeExponentQ());
+                seq.writeBigInteger(key.getCrtCoefficient());
+            } finally {
+                seq.close();
+            }
+        } finally {
+            w.close();
         }
     }
 }

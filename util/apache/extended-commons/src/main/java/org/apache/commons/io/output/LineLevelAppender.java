@@ -32,6 +32,7 @@ public interface LineLevelAppender {
      * @return TRUE if OK to accumulate data in work buffer
      */
     boolean isWriteEnabled ();
+
     /**
      * Called by the implementation once end of line is detected. 
      * @param lineData The &quot;pure&quot; line data - excluding any CR/LF(s).

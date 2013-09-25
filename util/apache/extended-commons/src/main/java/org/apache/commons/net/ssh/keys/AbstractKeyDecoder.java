@@ -20,12 +20,15 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.StreamCorruptedException;
 import java.math.BigInteger;
+import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 
 import javax.crypto.Cipher;
@@ -50,6 +53,20 @@ public abstract class AbstractKeyDecoder extends AbstractKeyLoader implements Ke
     protected AbstractKeyDecoder(String keyType, String algName) {
         super(keyType, algName);
     }
+
+    @Override
+    public void encodeOpenSSHPublicKey(OutputStream s, PublicKey key) throws IOException {
+        encodeString(s, getKeyType());
+        encodeOpenSSHPublicKeyData(s, key);
+    }
+
+    /**
+     * Write only the key data - without the key-type standard prefix
+     * @param s The {@link OutputStream} to write the public key data to
+     * @param key The {@link PublicKey} instance
+     * @throws IOException If failed to write the data
+     */
+    public abstract void encodeOpenSSHPublicKeyData(OutputStream s, PublicKey key) throws IOException;
 
     @Override
     public PrivateKey decodePEMPrivateKey(BufferedReader rdr, String password) throws IOException {
@@ -228,7 +245,16 @@ public abstract class AbstractKeyDecoder extends AbstractKeyLoader implements Ke
     }
 
     public static final String decodeString(InputStream s) throws IOException {
-        return new String(readRLEBytes(s));
+        return decodeString(s, Charset.defaultCharset());
+    }
+
+    public static final String decodeString(InputStream s, String charset) throws IOException {
+        return decodeString(s, Charset.forName(charset));
+    }
+
+    public static final String decodeString(InputStream s, Charset cs) throws IOException {
+        byte[]  bytes=readRLEBytes(s);
+        return new String(bytes, cs);
     }
 
     public static final BigInteger decodeBigInt(InputStream s) throws IOException {
@@ -249,5 +275,42 @@ public abstract class AbstractKeyDecoder extends AbstractKeyLoader implements Ke
              | ((bytes[1] & 0xFF) << 16)
              | ((bytes[2] & 0xFF) << 8)
              | (bytes[3] & 0xFF);
+    }
+
+    public static final int encodeString(OutputStream s, String v) throws IOException {
+        return encodeString(s, v, Charset.defaultCharset());
+    }
+
+    public static final int encodeString(OutputStream s, String v, String charset) throws IOException {
+        return encodeString(s, v, Charset.forName(charset));
+    }
+
+    public static final int encodeString(OutputStream s, String v, Charset cs) throws IOException {
+        return writeRLEBytes(s, v.getBytes(cs));
+    }
+    
+    public static final int encodeBigInt(OutputStream s, BigInteger v) throws IOException {
+        return writeRLEBytes(s, v.toByteArray());
+    }
+
+    public static final int writeRLEBytes(OutputStream s, byte ... bytes) throws IOException {
+        return writeRLEBytes(s, bytes, 0, bytes.length);
+    }
+
+    public static final int writeRLEBytes(OutputStream s, byte[] bytes, int off, int len) throws IOException {
+        byte[]  lenBytes=encodeInt(s, len);
+        s.write(bytes, off, len);
+        return lenBytes.length + len;
+    }
+    
+    public static final byte[] encodeInt(OutputStream s, int v) throws IOException {
+        byte[]  bytes={
+                (byte) ((v >> 24) & 0xFF),
+                (byte) ((v >> 16) & 0xFF),
+                (byte) ((v >>  8) & 0xFF),
+                (byte) (    v     & 0xFF)
+              };
+        s.write(bytes);
+        return bytes;
     }
 }

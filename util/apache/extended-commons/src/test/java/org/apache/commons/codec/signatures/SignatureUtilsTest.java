@@ -23,8 +23,12 @@ import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.ExtendedFileUtils;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ExtendedClassUtils;
+import org.apache.commons.lang3.Validate;
 import org.apache.commons.net.ssh.keys.dss.DSSKeyDecoder;
 import org.apache.commons.net.ssh.keys.rsa.RSAKeyDecoder;
 import org.junit.FixMethodOrder;
@@ -37,8 +41,10 @@ import org.junit.runners.MethodSorters;
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class SignatureUtilsTest extends AbstractSignatureTestSupport {
+    private final File  targetFolder;
+
     public SignatureUtilsTest() {
-        super();
+        targetFolder = ensureFolderExists(new File(Validate.notNull(detectTargetFolder(), "No target folder", ArrayUtils.EMPTY_OBJECT_ARRAY), getClass().getSimpleName()));
     }
 
     @Test
@@ -51,24 +57,25 @@ public class SignatureUtilsTest extends AbstractSignatureTestSupport {
         testSignData(DSSKeyDecoder.DSS_ALGORITHM, 1024);
     }
 
-    private void testSignData(String algorithm, int numBits)
-            throws GeneralSecurityException, IOException {
+    private void testSignData(String algorithm, int numBits) throws GeneralSecurityException, IOException {
         KeyPair kp=generateKeyPair(algorithm, numBits);
         URL     file=ExtendedClassUtils.getClassBytesURL(getClass());
         assertNotNull("Cannot locate class bytes", file);
 
         byte[]  signature=SignatureUtils.signData(kp.getPrivate(), file);
         assertTrue("Signature verification failed", SignatureUtils.verifySignature(kp.getPublic(), file, signature));
+        
+        String  baseName="testSignData-" + algorithm + "-" + numBits + ".der";
+        FileUtils.writeByteArrayToFile(new File(targetFolder, baseName), signature);
+        FileUtils.writeStringToFile(new File(targetFolder, baseName + ".b64.txt"), Base64.encodeBase64String(signature));
     }
 
     @Test
     public void testSignTextDataRSA1024() throws Exception {
         testSignTextData(RSAKeyDecoder.RSA_ALGORITHM, 1024);
-        
     }
     
-    private void testSignTextData(String algorithm, int numBits)
-            throws GeneralSecurityException, IOException {
+    private void testSignTextData(String algorithm, int numBits) throws GeneralSecurityException, IOException {
         KeyPair     kp=generateKeyPair(algorithm, numBits);
         PrivateKey  prvKey=kp.getPrivate();
         File        file=getTestJavaSourceFile();

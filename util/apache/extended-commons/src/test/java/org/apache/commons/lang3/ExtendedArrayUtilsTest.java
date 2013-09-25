@@ -28,6 +28,7 @@ import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
+
 /**
  * @author lgoldstein
  */
@@ -243,6 +244,7 @@ public class ExtendedArrayUtilsTest extends AbstractTestSupport {
         }
     }
 
+    
     @Test   // NOTE: this test represents all other values - int, short, etc. - since the code is the same
     public void testIndexOfLimitedLengthByteArray() {
         byte[]  data=new byte[Byte.SIZE];

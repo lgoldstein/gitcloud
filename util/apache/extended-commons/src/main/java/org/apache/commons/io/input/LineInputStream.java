@@ -17,10 +17,7 @@
 
 package org.apache.commons.io.input;
 
-import java.io.FilterInputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.nio.channels.Channel;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 
@@ -31,107 +28,31 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.Validate;
 
 /**
- * A {@link FilterInputStream} that reads data until LF is encountered
- * and then outputs this data line-by-line
+ * An {@link InputStream} that reads data until LF is encountered
+ * and then outputs this data line-by-line using the provided {@link LineLevelAppender}
  * @author Lyor G.
  * @since Sep 15, 2013 12:06:24 PM
  */
-public abstract class LineInputStream extends FilterInputStream implements LineLevelAppender, Channel {
-    protected final LineOutputStream    _output;
-
-    protected LineInputStream(InputStream input) {
-        this(input, Charset.defaultCharset());
+public class LineInputStream extends ExtendedTeeInputStream {
+    public LineInputStream(InputStream input, LineLevelAppender appender) {
+        this(input, Charset.defaultCharset(), appender);
     }
 
-    protected LineInputStream(InputStream input, boolean useAscii) {
-        super(Validate.notNull(input, "No input", ArrayUtils.EMPTY_OBJECT_ARRAY));
-
-        if (useAscii) {
-            _output = new AsciiLineOutputStream() {
-                @Override
-                public void writeLineData(CharSequence lineData) throws IOException {
-                    LineInputStream.this.writeLineData(lineData);
-                }
-                
-                @Override
-                public boolean isWriteEnabled() {
-                    return LineInputStream.this.isWriteEnabled();
-                }
-            };
-        } else {
-            _output = new LineOutputStream() {
-                @Override
-                public void writeLineData(CharSequence lineData) throws IOException {
-                    LineInputStream.this.writeLineData(lineData);
-                }
-                
-                @Override
-                public boolean isWriteEnabled() {
-                    return LineInputStream.this.isWriteEnabled();
-                }
-            };
-        }
+    public LineInputStream(InputStream input, boolean useAscii, LineLevelAppender appender) {
+        super(Validate.notNull(input, "No input", ArrayUtils.EMPTY_OBJECT_ARRAY),
+              useAscii ? new AsciiLineOutputStream(appender) : new LineOutputStream(appender),
+              true);
     }
 
-    protected LineInputStream(InputStream input, String charset) {
-        this(input, Charset.forName(Validate.notEmpty(charset, "No charset name", ArrayUtils.EMPTY_OBJECT_ARRAY)));
+    public LineInputStream(InputStream input, String charset, LineLevelAppender appender) {
+        this(input, Charset.forName(Validate.notEmpty(charset, "No charset name", ArrayUtils.EMPTY_OBJECT_ARRAY)), appender);
     }
 
-    protected LineInputStream(InputStream input, Charset charset) {
-        this(input, Validate.notNull(charset, "No charset", ArrayUtils.EMPTY_OBJECT_ARRAY).newDecoder());
+    public LineInputStream(InputStream input, Charset charset, LineLevelAppender appender) {
+        this(input, Validate.notNull(charset, "No charset", ArrayUtils.EMPTY_OBJECT_ARRAY).newDecoder(), appender);
     }
 
-    protected LineInputStream(InputStream input, CharsetDecoder decoder) {
-        super(Validate.notNull(input, "No input", ArrayUtils.EMPTY_OBJECT_ARRAY));
-
-        _output = new LineOutputStream(decoder) {
-            @Override
-            public void writeLineData(CharSequence lineData) throws IOException {
-                LineInputStream.this.writeLineData(lineData);
-            }
-            
-            @Override
-            public boolean isWriteEnabled() {
-                return LineInputStream.this.isWriteEnabled();
-            }
-        };
-    }
-
-    @Override
-    public int read() throws IOException {
-        int value=super.read();
-        if (value == (-1)) {
-            return value;
-        }
-        
-        _output.write(value);
-        return value;
-    }
-
-    @Override
-    public int read(byte[] b) throws IOException {
-        return read(b, 0, b.length);
-    }
-
-    @Override
-    public int read(byte[] b, int off, int len) throws IOException {
-        int readLen=super.read(b, off, len);
-        if (readLen <= 0) {
-            return readLen; // debug breakpoint
-        }
-        
-        _output.write(b, off, readLen);
-        return readLen;
-    }
-
-    @Override
-    public boolean isOpen() {
-        return _output.isOpen();
-    }
-
-    @Override
-    public void close() throws IOException {
-        super.close();
-        _output.close();
+    public LineInputStream(InputStream input, CharsetDecoder decoder, LineLevelAppender appender) {
+        super(Validate.notNull(input, "No input", ArrayUtils.EMPTY_OBJECT_ARRAY), new LineOutputStream(decoder, appender), true);
     }
 }

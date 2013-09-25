@@ -543,223 +543,6 @@ public class ExtendedArrayUtils extends ArrayUtils {
     }
 
     /**
-     * @param buf1 First buffer data
-     * @param offs1 First buffer offset
-     * @param buf2 Second buffer data
-     * @param offs2 Second buffer offset
-     * @param length Number of elements to compare
-     * @return The zero-based offset of the 1st different element - negative
-     * if all compared elements are equal
-     */
-    public static final int diffOffset(byte[] buf1, int offs1, byte[] buf2, int offs2, int length) {
-        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
-            byte    b1=buf1[i1], b2=buf2[i2];
-            if (b1 != b2) {
-                return l;
-            }
-        }
-        
-        return INDEX_NOT_FOUND;
-    }
-
-    /**
-     * @param buf1 First buffer data
-     * @param offs1 First buffer offset
-     * @param buf2 Second buffer data
-     * @param offs2 Second buffer offset
-     * @param length Number of elements to compare
-     * @return The zero-based offset of the 1st different element - negative
-     * if all compared elements are equal
-     */
-    public static final int diffOffset(short[] buf1, int offs1, short[] buf2, int offs2, int length) {
-        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
-            short    b1=buf1[i1], b2=buf2[i2];
-            if (b1 != b2) {
-                return l;
-            }
-        }
-        
-        return INDEX_NOT_FOUND;
-    }
-
-    /**
-     * @param buf1 First buffer data
-     * @param offs1 First buffer offset
-     * @param buf2 Second buffer data
-     * @param offs2 Second buffer offset
-     * @param length Number of elements to compare
-     * @return The zero-based offset of the 1st different element - negative
-     * if all compared elements are equal
-     */
-    public static final int diffOffset(int[] buf1, int offs1, int[] buf2, int offs2, int length) {
-        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
-            int    b1=buf1[i1], b2=buf2[i2];
-            if (b1 != b2) {
-                return l;
-            }
-        }
-        
-        return INDEX_NOT_FOUND;
-    }
-
-    /**
-     * @param buf1 First buffer data
-     * @param offs1 First buffer offset
-     * @param buf2 Second buffer data
-     * @param offs2 Second buffer offset
-     * @param length Number of elements to compare
-     * @return The zero-based offset of the 1st different element - negative
-     * if all compared elements are equal
-     */
-    public static final int diffOffset(long[] buf1, int offs1, long[] buf2, int offs2, int length) {
-        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
-            long    b1=buf1[i1], b2=buf2[i2];
-            if (b1 != b2) {
-                return l;
-            }
-        }
-        
-        return INDEX_NOT_FOUND;
-    }
-
-    /**
-     * @param buf1 First buffer data
-     * @param offs1 First buffer offset
-     * @param buf2 Second buffer data
-     * @param offs2 Second buffer offset
-     * @param length Number of elements to compare
-     * @return The zero-based offset of the 1st different element - negative
-     * if all compared elements are equal
-     */
-    public static final int diffOffset(float[] buf1, int offs1, float[] buf2, int offs2, int length) {
-        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
-            float    b1=buf1[i1], b2=buf2[i2];
-            if (Float.compare(b1, b2) != 0) {
-                return l;
-            }
-        }
-        
-        return INDEX_NOT_FOUND;
-    }
-
-    /**
-     * @param buf1 First buffer data
-     * @param offs1 First buffer offset
-     * @param buf2 Second buffer data
-     * @param offs2 Second buffer offset
-     * @param length Number of elements to compare
-     * @return The zero-based offset of the 1st different element - negative
-     * if all compared elements are equal
-     */
-    public static final int diffOffset(double[] buf1, int offs1, double[] buf2, int offs2, int length) {
-        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
-            double    b1=buf1[i1], b2=buf2[i2];
-            if (Double.compare(b1, b2) != 0) {
-                return l;
-            }
-        }
-        
-        return INDEX_NOT_FOUND;
-    }
-
-    /**
-     * @param buf1 First buffer data
-     * @param offs1 First buffer offset
-     * @param buf2 Second buffer data
-     * @param offs2 Second buffer offset
-     * @param length Number of elements to compare
-     * @return The zero-based offset of the 1st different element - negative
-     * if all compared elements are equal
-     */
-    public static final int diffOffset(char[] buf1, int offs1, char[] buf2, int offs2, int length) {
-        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
-            char    b1=buf1[i1], b2=buf2[i2];
-            if (b1 != b2) {
-                return l;
-            }
-        }
-        
-        return INDEX_NOT_FOUND;
-    }
-
-    /**
-     * @param buf1 First buffer data
-     * @param offs1 First buffer offset
-     * @param buf2 Second buffer data
-     * @param offs2 Second buffer offset
-     * @param length Number of elements to compare
-     * @return The zero-based offset of the 1st different element - negative
-     * if all compared elements are equal
-     */
-    public static final int diffOffset(boolean[] buf1, int offs1, boolean[] buf2, int offs2, int length) {
-        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
-            boolean    b1=buf1[i1], b2=buf2[i2];
-            if (b1 != b2) {
-                return l;
-            }
-        }
-        
-        return INDEX_NOT_FOUND;
-    }
-
-    /**
-     * @param buf1 First array of objects
-     * @param offs1 First array offset
-     * @param buf2 Second array of objects
-     * @param offs2 Second array offset
-     * @param length Number of elements to compare
-     * @return The zero-based offset of the 1st different element - negative
-     * if all compared elements are equal
-     * @see #diffOffset(Object[], int, Object[], int, Comparator, int)
-     */
-    public static final <T> int diffOffset(T[] buf1, int offs1, T[] buf2, int offs2, int length) {
-        return diffOffset(buf1, offs1, buf2, offs2, null, length);
-    }
-
-    /**
-     * @param buf1 First array of objects
-     * @param offs1 First array offset
-     * @param buf2 Second array of objects
-     * @param offs2 Second array offset
-     * @param length Number of elements to compare using {@link Comparable#compareTo(Object)}
-     * @return The zero-based offset of the 1st different element - negative
-     * if all compared elements are equal
-     * @see #diffOffset(Object[], int, Object[], int, Comparator, int)
-     */
-    public static final <T extends Comparable<T>> int diffComparableOffset(T[] buf1, int offs1, T[] buf2, int offs2, int length) {
-        return diffOffset(buf1, offs1, buf2, offs2, ExtendedComparatorUtils.<T>comparableComparator(), length);
-    }
-
-    /**
-     * @param buf1 First array of objects
-     * @param offs1 First array offset
-     * @param buf2 Second array of objects
-     * @param offs2 Second array offset
-     * @param c A {@link Comparator} to use to check for equality - if
-     * {@code null} then {@link ObjectUtils#equals(Object, Object)} is
-     * used
-     * @param length Number of elements to compare
-     * @return The zero-based offset of the 1st different element - negative
-     * if all compared elements are equal
-     */
-    public static final <T> int diffOffset(T[] buf1, int offs1, T[] buf2, int offs2, Comparator<? super T> c, int length) {
-        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
-            T   v1=buf1[i1], v2=buf2[i2];
-            if (c == null) {
-                if (!ObjectUtils.equals(v1, v2)) {
-                    return l;
-                }
-            } else {
-                if (c.compare(v1, v2) != 0) {
-                    return l;
-                }
-            }
-        }
-
-        return INDEX_NOT_FOUND;
-    }
-
-    /**
      * <p>Finds the index of the given value in the array starting at the given index
      * and checking up to specified number of elements.</p>
      *
@@ -1004,6 +787,223 @@ public class ExtendedArrayUtils extends ArrayUtils {
             }
         }
 
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * @param buf1 First buffer data
+     * @param offs1 First buffer offset
+     * @param buf2 Second buffer data
+     * @param offs2 Second buffer offset
+     * @param length Number of elements to compare
+     * @return The zero-based offset of the 1st different element - negative
+     * if all compared elements are equal
+     */
+    public static final int diffOffset(byte[] buf1, int offs1, byte[] buf2, int offs2, int length) {
+        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
+            byte    b1=buf1[i1], b2=buf2[i2];
+            if (b1 != b2) {
+                return l;
+            }
+        }
+        
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * @param buf1 First buffer data
+     * @param offs1 First buffer offset
+     * @param buf2 Second buffer data
+     * @param offs2 Second buffer offset
+     * @param length Number of elements to compare
+     * @return The zero-based offset of the 1st different element - negative
+     * if all compared elements are equal
+     */
+    public static final int diffOffset(short[] buf1, int offs1, short[] buf2, int offs2, int length) {
+        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
+            short    b1=buf1[i1], b2=buf2[i2];
+            if (b1 != b2) {
+                return l;
+            }
+        }
+        
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * @param buf1 First buffer data
+     * @param offs1 First buffer offset
+     * @param buf2 Second buffer data
+     * @param offs2 Second buffer offset
+     * @param length Number of elements to compare
+     * @return The zero-based offset of the 1st different element - negative
+     * if all compared elements are equal
+     */
+    public static final int diffOffset(int[] buf1, int offs1, int[] buf2, int offs2, int length) {
+        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
+            int    b1=buf1[i1], b2=buf2[i2];
+            if (b1 != b2) {
+                return l;
+            }
+        }
+        
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * @param buf1 First buffer data
+     * @param offs1 First buffer offset
+     * @param buf2 Second buffer data
+     * @param offs2 Second buffer offset
+     * @param length Number of elements to compare
+     * @return The zero-based offset of the 1st different element - negative
+     * if all compared elements are equal
+     */
+    public static final int diffOffset(long[] buf1, int offs1, long[] buf2, int offs2, int length) {
+        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
+            long    b1=buf1[i1], b2=buf2[i2];
+            if (b1 != b2) {
+                return l;
+            }
+        }
+        
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * @param buf1 First buffer data
+     * @param offs1 First buffer offset
+     * @param buf2 Second buffer data
+     * @param offs2 Second buffer offset
+     * @param length Number of elements to compare
+     * @return The zero-based offset of the 1st different element - negative
+     * if all compared elements are equal
+     */
+    public static final int diffOffset(float[] buf1, int offs1, float[] buf2, int offs2, int length) {
+        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
+            float    b1=buf1[i1], b2=buf2[i2];
+            if (Float.compare(b1, b2) != 0) {
+                return l;
+            }
+        }
+        
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * @param buf1 First buffer data
+     * @param offs1 First buffer offset
+     * @param buf2 Second buffer data
+     * @param offs2 Second buffer offset
+     * @param length Number of elements to compare
+     * @return The zero-based offset of the 1st different element - negative
+     * if all compared elements are equal
+     */
+    public static final int diffOffset(double[] buf1, int offs1, double[] buf2, int offs2, int length) {
+        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
+            double    b1=buf1[i1], b2=buf2[i2];
+            if (Double.compare(b1, b2) != 0) {
+                return l;
+            }
+        }
+        
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * @param buf1 First buffer data
+     * @param offs1 First buffer offset
+     * @param buf2 Second buffer data
+     * @param offs2 Second buffer offset
+     * @param length Number of elements to compare
+     * @return The zero-based offset of the 1st different element - negative
+     * if all compared elements are equal
+     */
+    public static final int diffOffset(char[] buf1, int offs1, char[] buf2, int offs2, int length) {
+        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
+            char    b1=buf1[i1], b2=buf2[i2];
+            if (b1 != b2) {
+                return l;
+            }
+        }
+        
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * @param buf1 First buffer data
+     * @param offs1 First buffer offset
+     * @param buf2 Second buffer data
+     * @param offs2 Second buffer offset
+     * @param length Number of elements to compare
+     * @return The zero-based offset of the 1st different element - negative
+     * if all compared elements are equal
+     */
+    public static final int diffOffset(boolean[] buf1, int offs1, boolean[] buf2, int offs2, int length) {
+        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
+            boolean    b1=buf1[i1], b2=buf2[i2];
+            if (b1 != b2) {
+                return l;
+            }
+        }
+        
+        return INDEX_NOT_FOUND;
+    }
+
+    /**
+     * @param buf1 First array of objects
+     * @param offs1 First array offset
+     * @param buf2 Second array of objects
+     * @param offs2 Second array offset
+     * @param length Number of elements to compare
+     * @return The zero-based offset of the 1st different element - negative
+     * if all compared elements are equal
+     * @see #diffOffset(Object[], int, Object[], int, Comparator, int)
+     */
+    public static final <T> int diffOffset(T[] buf1, int offs1, T[] buf2, int offs2, int length) {
+        return diffOffset(buf1, offs1, buf2, offs2, null, length);
+    }
+
+    /**
+     * @param buf1 First array of objects
+     * @param offs1 First array offset
+     * @param buf2 Second array of objects
+     * @param offs2 Second array offset
+     * @param length Number of elements to compare using {@link Comparable#compareTo(Object)}
+     * @return The zero-based offset of the 1st different element - negative
+     * if all compared elements are equal
+     * @see #diffOffset(Object[], int, Object[], int, Comparator, int)
+     */
+    public static final <T extends Comparable<T>> int diffComparableOffset(T[] buf1, int offs1, T[] buf2, int offs2, int length) {
+        return diffOffset(buf1, offs1, buf2, offs2, ExtendedComparatorUtils.<T>comparableComparator(), length);
+    }
+
+    /**
+     * @param buf1 First array of objects
+     * @param offs1 First array offset
+     * @param buf2 Second array of objects
+     * @param offs2 Second array offset
+     * @param c A {@link Comparator} to use to check for equality - if
+     * {@code null} then {@link ObjectUtils#equals(Object, Object)} is
+     * used
+     * @param length Number of elements to compare
+     * @return The zero-based offset of the 1st different element - negative
+     * if all compared elements are equal
+     */
+    public static final <T> int diffOffset(T[] buf1, int offs1, T[] buf2, int offs2, Comparator<? super T> c, int length) {
+        for (int i1=offs1, i2=offs2, l=0; l < length; i1++, i2++, l++) {
+            T   v1=buf1[i1], v2=buf2[i2];
+            if (c == null) {
+                if (!ObjectUtils.equals(v1, v2)) {
+                    return l;
+                }
+            } else {
+                if (c.compare(v1, v2) != 0) {
+                    return l;
+                }
+            }
+        }
+        
         return INDEX_NOT_FOUND;
     }
 

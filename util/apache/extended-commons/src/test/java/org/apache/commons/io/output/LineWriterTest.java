@@ -16,10 +16,17 @@
 
 package org.apache.commons.io.output;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.test.AbstractTestSupport;
@@ -38,8 +45,46 @@ public class LineWriterTest extends AbstractTestSupport {
     }
 
     @Test
+    public void testWriterCorrectness() throws IOException {
+        File    file=getTestJavaSourceFile();
+        assertNotNull("Cannot locate test file", file);
+        
+        List<String>        expected=FileUtils.readLines(file);
+        final List<String>  actual=new ArrayList<String>(expected.size());
+        LineLevelAppender   appender=new LineLevelAppender() {
+                @Override
+                public void writeLineData(CharSequence lineData) throws IOException {
+                    actual.add(lineData.toString());
+                }
+                
+                @Override
+                public boolean isWriteEnabled() {
+                    return true;
+                }
+            };
+        LineWriter          output=new LineWriter(appender);
+        try {
+            Reader  input=new FileReader(file);
+            try {
+                long    cpySize=IOUtils.copyLarge(input, output);
+                assertEquals("Mismatched copy size for " + file, file.length(), cpySize);
+            } finally {
+                input.close();
+            }
+        } finally {
+            output.close();
+        }
+        
+        assertEquals("Mismatched number of lines", expected.size(), actual.size());
+        for (int    index=0; index < expected.size(); index++) {
+            String  expLine=expected.get(index), actLine=actual.get(index);
+            assertEquals("Mismatched line data #" + (index + 1), expLine, actLine);
+        }
+    }
+
+    @Test
     public void testNoWriteIfNotEnabled() throws IOException {
-        Writer  writer=new LineWriter() {
+        LineLevelAppender   appender=new LineLevelAppender() {
                 @Override
                 public boolean isWriteEnabled() {
                     return false;
@@ -50,7 +95,7 @@ public class LineWriterTest extends AbstractTestSupport {
                     fail("Unexpected call: " + lineData);
                 }
             };
-
+        Writer  writer=new LineWriter(appender);
         try {
             for (int index=0; index < Byte.MAX_VALUE; index++) {
                 writer.append(String.valueOf(index)).append(SystemUtils.LINE_SEPARATOR);
@@ -63,7 +108,7 @@ public class LineWriterTest extends AbstractTestSupport {
     @Test
     public void testOnlyFullLinesWritten() throws IOException {
         final AtomicInteger lineCount=new AtomicInteger(0);
-        Writer  writer=new LineWriter() {
+        LineLevelAppender   appender=new LineLevelAppender() {
                 private final AtomicInteger expectedValue=new AtomicInteger(0);
 
                 @Override
@@ -81,8 +126,8 @@ public class LineWriterTest extends AbstractTestSupport {
                     }
                 }
             };
-
-        int expectedLineCount=0;
+        int     expectedLineCount=0;
+        Writer  writer=new LineWriter(appender);
         try {
             for (int index=1; index <= Byte.MAX_VALUE; index++) {
                 writer.append(String.valueOf(index));

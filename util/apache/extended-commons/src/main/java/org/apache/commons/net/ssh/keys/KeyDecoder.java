@@ -19,6 +19,7 @@ package org.apache.commons.net.ssh.keys;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.security.GeneralSecurityException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -38,7 +39,14 @@ public interface KeyDecoder extends KeyLoader {
      * @return The decoded {@link PublicKey} instance
      * @throws IOException If invalid bytes contents
      */
-    PublicKey decodePublicKey(InputStream s) throws IOException;
+    PublicKey decodeOpenSSHPublicKey(InputStream s) throws IOException;
+    
+    /**
+     * @param s The {@link OutputStream} to write the public key data to
+     * @param key The {@link PublicKey} instance
+     * @throws IOException If failed to write the data
+     */
+    void encodeOpenSSHPublicKey(OutputStream s, PublicKey key) throws IOException;
     
     /**
      * @param privateKey The {@link PrivateKey}
@@ -49,6 +57,9 @@ public interface KeyDecoder extends KeyLoader {
     
     Predicate<? super String> getPEMBeginMarker();
     Predicate<? super String> getPEMEndMarker();
+
+    <A extends Appendable> A appendPEMBeginMarker(A sb) throws IOException;
+    <A extends Appendable> A appendPEMEndMarker(A sb) throws IOException;
 
     /**
      * @param rdr A {@link BufferedReader} for reading from the PEM file
@@ -101,4 +112,6 @@ public interface KeyDecoder extends KeyLoader {
      * @throws IOException If failed to decode key
      */
     PrivateKey decodePEMPrivateKey(InputStream s, boolean okToClose, String password) throws IOException;
+    
+    void encodePEMPrivateKey(PrivateKey key, OutputStream s, boolean okToClose, String password) throws IOException;
 }

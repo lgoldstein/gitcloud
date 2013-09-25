@@ -48,7 +48,7 @@ public class CryptoKeyEntry implements Serializable {
     private static final long serialVersionUID = -4961735053733585992L;
 
     /**
-     * An {@link ExtendedTransformer} that invokes the {@link CryptoKeyEntry#decodePublicKey()}
+     * An {@link ExtendedTransformer} that invokes the {@link CryptoKeyEntry#decodeOpenSSHPublicKey()}
      * <B>Note:</B> throws a {@linkplain RuntimeException} if failed to decode the key
      */
     public static final ExtendedTransformer<CryptoKeyEntry,PublicKey> PUBLIC_KEY_DECODER=
@@ -60,7 +60,7 @@ public class CryptoKeyEntry implements Serializable {
                     }
                     
                     try {
-                        return entry.decodePublicKey();
+                        return entry.decodeOpenSSHPublicKey();
                     } catch(IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -87,7 +87,7 @@ public class CryptoKeyEntry implements Serializable {
     private String  user;
     private String  host;
     private byte[]  keyData;
-    
+
     public CryptoKeyEntry () {
         super();
     }
@@ -132,8 +132,8 @@ public class CryptoKeyEntry implements Serializable {
         this.keyData = value;
     }
 
-    public PublicKey decodePublicKey() throws IOException {
-        return KeyUtils.decodePublicKey(getKeyData());
+    public PublicKey decodeOpenSSHPublicKey() throws IOException {
+        return KeyUtils.decodeOpenSSHPublicKey(getKeyData());
     }
 
     @Override

@@ -26,10 +26,10 @@ import javax.servlet.http.HttpServletRequest;
 
 import net.community.chest.gitcloud.facade.git.PackFactory;
 
-import org.apache.commons.io.input.CloseShieldInputStream;
-import org.apache.commons.io.input.LineInputStream;
+import org.apache.commons.io.HexDumpOutputStream;
+import org.apache.commons.io.input.TeeInputStream;
 import org.apache.commons.io.output.AsciiLineOutputStream;
-import org.apache.commons.io.output.CloseShieldOutputStream;
+import org.apache.commons.io.output.LineLevelAppender;
 import org.apache.commons.io.output.TeeOutputStream;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.Validate;
@@ -106,8 +106,10 @@ public class BackendUploadPackFactory<C> extends PackFactory<C> implements Uploa
                 @Override
                 @SuppressWarnings("synthetic-access")
                 public void upload(InputStream input, OutputStream output, OutputStream messages) throws IOException {
+                    InputStream     effIn=input;
+                    OutputStream    effOut=output, effMessages=messages;
                     if (logger.isTraceEnabled()) {
-                        InputStream effIn=new LineInputStream(new CloseShieldInputStream(input), true) {
+                        LineLevelAppender   inputAppender=new LineLevelAppender() {
                                 @Override
                                 public void writeLineData(CharSequence lineData) throws IOException {
                                     logger.trace(logPrefix + " upload(C): " + lineData);
@@ -118,73 +120,78 @@ public class BackendUploadPackFactory<C> extends PackFactory<C> implements Uploa
                                     return true;
                                 }
                             };
-                        try {
-                            OutputStream    effOut=
-                                    new TeeOutputStream(
-                                            new CloseShieldOutputStream(output), new AsciiLineOutputStream() {
-                                                @Override
-                                                public void writeLineData(CharSequence lineData) throws IOException {
-                                                    logger.trace(logPrefix + " upload(S): " + lineData);
-                                                }
-                                                
-                                                @Override
-                                                public boolean isWriteEnabled() {
-                                                    return true;
-                                                }
-                                            });
-                            try {
-                                super.upload(effIn, effOut, messages);
-                            } finally {
-                                effOut.close();
-                            }
-                        } finally {
-                            effIn.close();
-                        }
-                    } else {
-                        super.upload(input, output, messages);
+                       effIn = new TeeInputStream(effIn, new HexDumpOutputStream(inputAppender), true);
+
+                       LineLevelAppender   outputAppender=new LineLevelAppender() {
+                               @Override
+                               public void writeLineData(CharSequence lineData) throws IOException {
+                                   logger.trace(logPrefix + " upload(S): " + lineData);
+                               }
+                               
+                               @Override
+                               public boolean isWriteEnabled() {
+                                   return true;
+                               }
+                           };
+                       effOut = new TeeOutputStream(effOut, new HexDumpOutputStream(outputAppender));
+                       
+                       if (effMessages != null) {
+                           LineLevelAppender   messagesAppender=new LineLevelAppender() {
+                                   @Override
+                                   public void writeLineData(CharSequence lineData) throws IOException {
+                                       logger.trace(logPrefix + " upload(M): " + lineData);
+                                   }
+                                   
+                                   @Override
+                                   public boolean isWriteEnabled() {
+                                       return true;
+                                   }
+                               };
+                           // TODO review the decision to use an AsciiLineOutputStream here
+                           effMessages = new TeeOutputStream(effMessages, new AsciiLineOutputStream(messagesAppender));
+                       }
                     }
+
+                    super.upload(effIn, effOut, effMessages);
                 }
 
                 @Override
                 @SuppressWarnings("synthetic-access")
                 public void sendAdvertisedRefs(RefAdvertiser adv) throws IOException, ServiceMayNotContinueException {
+                    RefAdvertiser   effAdv=adv;
                     if (logger.isTraceEnabled() && (adv instanceof PacketLineOutRefAdvertiser)) {
-                        final OutputStream    logStream=new AsciiLineOutputStream() {
+                        PacketLineOut       pckOut=(PacketLineOut) ReflectionUtils.getField(pckOutField, adv);
+                        effAdv = new PacketLineOutRefAdvertiser(pckOut) {
+                                private final PacketLineOut pckLog=
+                                        new PacketLineOut(  // TODO review the decision to use an AsciiLineOutputStream here
+                                                new AsciiLineOutputStream(new LineLevelAppender() {
+                                                            @Override
+                                                            public void writeLineData(CharSequence lineData) throws IOException {
+                                                                logger.trace(logPrefix + " S: " + lineData);
+                                                            }
+                                                            
+                                                            @Override
+                                                            public boolean isWriteEnabled() {
+                                                                return true;
+                                                            }
+                                                        }));
+
                                 @Override
-                                public void writeLineData(CharSequence lineData) throws IOException {
-                                    logger.trace(logPrefix + " S: " + lineData);
+                                protected void writeOne(CharSequence line) throws IOException {
+                                    String  s=line.toString();
+                                    super.writeOne(s);
+                                    pckLog.writeString(s);
                                 }
-                                
+    
                                 @Override
-                                public boolean isWriteEnabled() {
-                                    return true;
+                                protected void end() throws IOException {
+                                    super.end();
+                                    pckLog.end();
                                 }
                             };
-                        try {
-                            PacketLineOut       pckOut=(PacketLineOut) ReflectionUtils.getField(pckOutField, adv);
-                            PacketLineOutRefAdvertiser  repAdv=new PacketLineOutRefAdvertiser(pckOut) {
-                                    private final PacketLineOut pckLog=new PacketLineOut(logStream);
-
-                                    @Override
-                                    protected void writeOne(CharSequence line) throws IOException {
-                                        String  s=line.toString();
-                                        super.writeOne(s);
-                                        pckLog.writeString(s);
-                                    }
-        
-                                    @Override
-                                    protected void end() throws IOException {
-                                        super.end();
-                                        pckLog.end();
-                                    }
-                                };
-                            super.sendAdvertisedRefs(repAdv);
-                        } finally {
-                            logStream.close();  // flush any remaining data
-                        }
-                    } else {
-                        super.sendAdvertisedRefs(adv);
                     }
+
+                    super.sendAdvertisedRefs(effAdv);
                 }
             };
         up.setTimeout(uploadTimeoutValue);

@@ -32,48 +32,20 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
  * @author Lyor G.
  * @since Sep 24, 2013 8:10:51 AM
  */
-public class ByteArrayAccumulatingInputStream extends FilterInputStream {
-    private final ByteArrayOutputStream accumulator;
-
+public class ByteArrayAccumulatingInputStream extends ExtendedTeeInputStream {
     public ByteArrayAccumulatingInputStream(InputStream input) {
         this(input, 1024);
     }
     
     public ByteArrayAccumulatingInputStream(InputStream input, int initialSize) {
-        super(input);      
-        accumulator = new ByteArrayOutputStream(initialSize);
-    }
-
-    @Override
-    public int read() throws IOException {
-        int nRead=super.read();
-        if (nRead == (-1)) {
-            return (-1);
-        }
-        
-        accumulator.write(nRead);
-        return nRead;
-    }
-
-    @Override
-    public int read(byte[] b) throws IOException {
-        return read(b, 0, b.length);
-    }
-
-    @Override
-    public int read(byte[] b, int off, int len) throws IOException {
-        int readLen=super.read(b, off, len);
-        if (readLen <= 0) {
-            return readLen;
-        }
-        
-        accumulator.write(b, off, readLen);
-        return readLen;
+        super(input, new ByteArrayOutputStream(initialSize), true);      
     }
 
     @Override
     public synchronized void reset() throws IOException {
         super.reset();
+        
+        ByteArrayOutputStream   accumulator=(ByteArrayOutputStream) getBranch();
         accumulator.reset();
     }
 
@@ -83,19 +55,23 @@ public class ByteArrayAccumulatingInputStream extends FilterInputStream {
     }
 
     public int size() {
+        ByteArrayOutputStream   accumulator=(ByteArrayOutputStream) getBranch();
         return accumulator.size();
     }
     
     public byte[] toByteArray() {
+        ByteArrayOutputStream   accumulator=(ByteArrayOutputStream) getBranch();
         return accumulator.toByteArray();
     }
     
     public String toString(String enc) throws UnsupportedEncodingException {
+        ByteArrayOutputStream   accumulator=(ByteArrayOutputStream) getBranch();
         return accumulator.toString(enc);
     }
 
     @Override
     public String toString() {
+        ByteArrayOutputStream   accumulator=(ByteArrayOutputStream) getBranch();
         return accumulator.toString();
     }
 }

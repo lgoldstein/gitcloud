@@ -26,17 +26,18 @@ import java.nio.charset.Charset;
  * @author Lyor G.
  * @since Sep 22, 2013 3:13:44 PM
  */
-public abstract class AsciiLineOutputStream extends LineOutputStream {
+public class AsciiLineOutputStream extends LineOutputStream {
     public static final Charset CHARSET=Charset.forName("US-ASCII");
 
-    protected AsciiLineOutputStream() {
-        super(CHARSET);
+    public AsciiLineOutputStream(LineLevelAppender appender) {
+        super(CHARSET, appender);
     }
 
     @Override
     protected void writeAccumulatedData(byte[] b, int off, int len) throws IOException {
+        LineLevelAppender appender=getLineLevelAppender();
         if (len <= 0) {
-            writeLineData("");
+            appender.writeLineData("");
             return;
         }
         
@@ -46,6 +47,6 @@ public abstract class AsciiLineOutputStream extends LineOutputStream {
         }
         
         CharSequence    lineData=(chars[len - 1] == '\r') ? CharBuffer.wrap(chars, 0, len - 1) : CharBuffer.wrap(chars, 0, len);
-        writeLineData(lineData);
+        appender.writeLineData(lineData);
     }
 }

@@ -100,12 +100,18 @@ public class ExtendedFileUtils extends FileUtils {
      * @throws IOException If failed to read from the file
      */
     public static final char[] readFileToCharArray(File file) throws IOException {
+        long    size=file.length();
+        Validate.isTrue((size >= 0L) && (size < Integer.MAX_VALUE), "Bad file size for %s: %d", file, Long.valueOf(size));
+        char[]  chars=new char[(int) size];
+
         Reader  rdr=new FileReader(file);
         try {
-            return IOUtils.toCharArray(rdr);
+            IOUtils.readFully(rdr, chars);
         } finally {
             rdr.close();
         }
+        
+        return chars;
     }
 
     /**

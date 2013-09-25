@@ -14,25 +14,20 @@
  */
 package net.community.chest.gitcloud.facade.backend.git;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.zip.GZIPInputStream;
 
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
 
 import net.community.chest.gitcloud.facade.git.PackFactory;
 
-import org.apache.commons.io.HexDump;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.input.ByteArrayAccumulatingInputStream;
-import org.apache.commons.io.input.CloseShieldInputStream;
+import org.apache.commons.io.HexDumpOutputStream;
+import org.apache.commons.io.input.TeeInputStream;
 import org.apache.commons.io.output.AsciiLineOutputStream;
-import org.apache.commons.io.output.ByteArrayOutputStream;
-import org.apache.commons.io.output.CloseShieldOutputStream;
+import org.apache.commons.io.output.LineLevelAppender;
 import org.apache.commons.io.output.TeeOutputStream;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.ReceivePack;
@@ -81,13 +76,11 @@ public class BackendReceivePackFactory<C> extends PackFactory<C> implements Rece
     @Override
     public ReceivePack create(C request, Repository db)
             throws ServiceNotEnabledException, ServiceNotAuthorizedException {
-        final String    logPrefix, encoding;
+        final String    logPrefix;
         if (request instanceof HttpServletRequest) {
             HttpServletRequest  req=(HttpServletRequest) request;
-            encoding = req.getHeader("Content-Encoding");
             logPrefix = "create(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]";
         } else {
-            encoding = null;
             logPrefix = "create(" + db.getDirectory() + ")";
         }
         if (logger.isDebugEnabled()) {
@@ -98,51 +91,13 @@ public class BackendReceivePackFactory<C> extends PackFactory<C> implements Rece
             @Override
             @SuppressWarnings("synthetic-access")
             public void receive(InputStream input, OutputStream output, OutputStream messages) throws IOException {
+                InputStream     effIn=input;
+                OutputStream    effOut=output, effMessages=messages;
                 if (logger.isTraceEnabled()) {
-                    ByteArrayAccumulatingInputStream effIn=new ByteArrayAccumulatingInputStream(new CloseShieldInputStream(input));
-                    try {
-                        OutputStream    effOut=
-                                new TeeOutputStream(
-                                        new CloseShieldOutputStream(output), new AsciiLineOutputStream() {
-                                            @Override
-                                            public void writeLineData(CharSequence lineData) throws IOException {
-                                                logger.trace(logPrefix + " receive(S): " + lineData);
-                                            }
-                                            
-                                            @Override
-                                            public boolean isWriteEnabled() {
-                                                return true;
-                                            }
-                                        });
-                        try {
-                            super.receive(effIn, effOut, messages);
-                        } finally {
-                            effOut.close();
-                        }
-                    } finally {
-                        effIn.close();
-                    }
-                    
-                    byte[] gzBytes=effIn.toByteArray();
-                    if ("gzip".equalsIgnoreCase(encoding)) {
-                        ByteArrayOutputStream   baos=new ByteArrayOutputStream(Math.max(1024, gzBytes.length * 2));
-                        try {
-                            InputStream gzStream=new GZIPInputStream(new ByteArrayInputStream(gzBytes));
-                            try {
-                                IOUtils.copyLarge(gzStream, baos);
-                            } finally {
-                                gzStream.close();
-                            }
-                        } finally {
-                            baos.close();
-                        }
-                        gzBytes = baos.toByteArray();
-                    }
-                    
-                    AsciiLineOutputStream   logStream=new AsciiLineOutputStream() {
+                    LineLevelAppender   inputAppender=new LineLevelAppender() {
                             @Override
                             public void writeLineData(CharSequence lineData) throws IOException {
-                                logger.trace(logPrefix + " receive(C): " + lineData);
+                                logger.trace(logPrefix + " upload(C): " + lineData);
                             }
                             
                             @Override
@@ -150,14 +105,39 @@ public class BackendReceivePackFactory<C> extends PackFactory<C> implements Rece
                                 return true;
                             }
                         };
-                    try {
-                        HexDump.dump(gzBytes, 0L, logStream, 0);
-                    } finally {
-                        logStream.close();
-                    }
-                } else {
-                    super.receive(input, output, messages);
+                   effIn = new TeeInputStream(effIn, new HexDumpOutputStream(inputAppender), true);
+
+                   LineLevelAppender   outputAppender=new LineLevelAppender() {
+                           @Override
+                           public void writeLineData(CharSequence lineData) throws IOException {
+                               logger.trace(logPrefix + " upload(S): " + lineData);
+                           }
+                           
+                           @Override
+                           public boolean isWriteEnabled() {
+                               return true;
+                           }
+                       };
+                   effOut = new TeeOutputStream(effOut, new HexDumpOutputStream(outputAppender));
+               
+                   if (effMessages != null) {
+                       LineLevelAppender   messagesAppender=new LineLevelAppender() {
+                               @Override
+                               public void writeLineData(CharSequence lineData) throws IOException {
+                                   logger.trace(logPrefix + " upload(M): " + lineData);
+                               }
+                               
+                               @Override
+                               public boolean isWriteEnabled() {
+                                   return true;
+                               }
+                           };
+                       // TODO review the decision to use an AsciiLineOutputStream here
+                       effMessages = new TeeOutputStream(effMessages, new AsciiLineOutputStream(messagesAppender));
+                   }
                 }
+
+                super.receive(effIn, effOut, effMessages);
             }
         };
         receive.setTimeout(receiveTimeoutValue);

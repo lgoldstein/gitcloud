@@ -71,21 +71,26 @@ public class DERParser extends FilterInputStream {
 
     /**
      * Decode the length of the field. Can only support length
-     * encoding up to 4 octets.
-     * 
-     * <p/>In BER/DER encoding, length can be encoded in 2 forms,
+     * encoding up to 4 octets. In BER/DER encoding, length can
+     * be encoded in 2 forms:
      * <ul>
-     * <li>Short form. One octet. Bit 8 has value "0" and bits 7-1
-     * give the length.
-     * <li>Long form. Two to 127 octets (only 4 is supported here). 
-     * Bit 8 of first octet has value "1" and bits 7-1 give the 
-     * number of additional length octets. Second and following 
-     * octets give the length, base 256, most significant digit first.
+     *      <li>
+     *      Short form - One octet. Bit 8 has value "0" and bits 7-1
+     *      give the length.
+     *      </li>
+     *      
+     *      <li>
+     *      Long form - Two to 127 octets (only 4 is supported here). 
+     *      Bit 8 of first octet has value "1" and bits 7-1 give the 
+     *      number of additional length octets. Second and following 
+     *      octets give the length, base 256, most significant digit
+     *      first.
+     *      </li>
      * </ul>
      * @return The length as integer
      * @throws IOException
      */
-    private int readLength() throws IOException {
+    protected int readLength() throws IOException {
         int i = read();
         if (i == -1) {
             throw new StreamCorruptedException("Invalid DER: length missing");
@@ -98,7 +103,7 @@ public class DERParser extends FilterInputStream {
         
         int num = i & 0x7F;
         // TODO We can't handle length longer than 4 bytes
-        if ( i >= 0xFF || num > 4) { 
+        if ((i >= 0xFF) || (num > 4)) { 
             throw new StreamCorruptedException("Invalid DER: length field too big: " + i);
         }
         

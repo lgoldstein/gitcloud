@@ -35,29 +35,34 @@ import org.apache.commons.lang3.Validate;
  * @author Lyor Goldstein
  * @since Sep 15, 2013 10:14:24 AM
  */
-public abstract class LineOutputStream extends OutputStream implements LineLevelAppender, Channel {
+public class LineOutputStream extends OutputStream implements Channel {
     private boolean _closed;
     protected byte[]  _workBuf;
     protected char[]  _lineBuf;
     protected int _usedLen;
-
     protected final CharsetDecoder    _decoder;
     protected final byte[]    oneByte=new byte[1];
+    protected final LineLevelAppender  _appender;
 
-    protected LineOutputStream() {
-        this(Charset.defaultCharset());
+    public LineOutputStream(LineLevelAppender appender) {
+        this(Charset.defaultCharset(), appender);
     }
 
-    protected LineOutputStream(String charset) {
-        this(Charset.forName(Validate.notEmpty(charset, "No charset name", ArrayUtils.EMPTY_OBJECT_ARRAY)));
+    public LineOutputStream(String charset, LineLevelAppender appender) {
+        this(Charset.forName(Validate.notEmpty(charset, "No charset name", ArrayUtils.EMPTY_OBJECT_ARRAY)), appender);
     }
 
-    protected LineOutputStream(Charset charset) {
-        this(Validate.notNull(charset, "No charset", ArrayUtils.EMPTY_OBJECT_ARRAY).newDecoder());
+    public LineOutputStream(Charset charset, LineLevelAppender appender) {
+        this(Validate.notNull(charset, "No charset", ArrayUtils.EMPTY_OBJECT_ARRAY).newDecoder(), appender);
     }
 
-    protected LineOutputStream(CharsetDecoder decoder) {
+    public LineOutputStream(CharsetDecoder decoder, LineLevelAppender appender) {
         _decoder = Validate.notNull(decoder, "No decoder", ArrayUtils.EMPTY_OBJECT_ARRAY);
+        _appender = Validate.notNull(appender, "No appender", ArrayUtils.EMPTY_OBJECT_ARRAY);
+    }
+
+    public final LineLevelAppender getLineLevelAppender() {
+        return _appender;
     }
 
     @Override
@@ -77,7 +82,8 @@ public abstract class LineOutputStream extends OutputStream implements LineLevel
             throw new IOException("Stream is closed");
         }
         
-        if (!isWriteEnabled()) {
+        LineLevelAppender   appender=getLineLevelAppender();
+        if (!appender.isWriteEnabled()) {
             if (_usedLen > 0) {
                 _usedLen = 0;
             }
@@ -115,8 +121,9 @@ public abstract class LineOutputStream extends OutputStream implements LineLevel
     }
 
     protected void writeAccumulatedData(byte[] b, int off, int len) throws IOException {
+        LineLevelAppender   appender=getLineLevelAppender();
         if (len <= 0) {
-            writeLineData("");
+            appender.writeLineData("");
             return;
         }
         
@@ -125,19 +132,19 @@ public abstract class LineOutputStream extends OutputStream implements LineLevel
         
         _decoder.reset();
         CoderResult res=_decoder.decode(bb, cc, true);
-        if (res.isError()) {
+        if (res.isError() || res.isMalformed() || res.isOverflow() || res.isUnmappable()) {
             throw new StreamCorruptedException("Failed to decode line bytes: " + res);
         }
         
         cc.flip();
-        writeLineData(cc);
+        appender.writeLineData(cc);
     }
 
     protected char[] ensureCharDataCapacity(int numBytes) {
         float   grwFactor=_decoder.maxCharsPerByte();   // worst case
         int     reqChars=(grwFactor > 0.0f) ? (int) (numBytes * grwFactor) : numBytes;
         if ((_lineBuf == null) || (_lineBuf.length < reqChars)) {
-            reqChars = Math.max(reqChars, TYPICAL_LINE_LENGTH);
+            reqChars = Math.max(reqChars, LineLevelAppender.TYPICAL_LINE_LENGTH);
             _lineBuf = new char[reqChars + Byte.SIZE /* a little extra to avoid numerous growths */];
         }
         
@@ -176,11 +183,13 @@ public abstract class LineOutputStream extends OutputStream implements LineLevel
     @Override
     public void close() throws IOException {
         if (isOpen()) {
+            LineLevelAppender   appender=getLineLevelAppender();
             try {
-                if (isWriteEnabled() && (_usedLen > 0)) {
+                if (appender.isWriteEnabled() && (_usedLen > 0)) {
                     writeAccumulatedData(_workBuf, 0, _usedLen); 
                 }
             } finally {
+                _usedLen = 0;
                 _closed = true;
             }
         }

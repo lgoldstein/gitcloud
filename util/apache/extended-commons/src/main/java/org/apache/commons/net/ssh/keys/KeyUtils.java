@@ -19,12 +19,17 @@ package org.apache.commons.net.ssh.keys;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.StreamCorruptedException;
+import java.io.Writer;
 import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.Key;
@@ -47,10 +52,11 @@ import org.apache.commons.collections15.Predicate;
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.commons.io.input.CloseShieldReader;
 import org.apache.commons.io.input.ExtendedCloseShieldInputStream;
+import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.commons.io.output.ExtendedCloseShieldOutputStream;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ExtendedArrayUtils;
 import org.apache.commons.lang3.ExtendedStringUtils;
-import org.apache.commons.lang3.ExtendedValidate;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.Validate;
@@ -158,7 +164,7 @@ public class KeyUtils {
      * @see #getKeyDecoderByKeyType(String)
      */
     public static final void registerDecoder(KeyDecoder decoder) {
-        ExtendedValidate.notNull(decoder, "No decoder provided");
+        Validate.notNull(decoder, "No decoder provided", ArrayUtils.EMPTY_OBJECT_ARRAY);
         
         synchronized(byKeyTypeDecodersMap) {
             byKeyTypeDecodersMap.put(decoder.getKeyType(), decoder);
@@ -179,6 +185,16 @@ public class KeyUtils {
         synchronized(byKeyTypeDecodersMap) {
             return byKeyTypeDecodersMap.get(keyType);
         }
+    }
+
+    /**
+     * @param key The {@link Key} instance
+     * @return The registered {@link KeyDecoder} for the specified type -
+     * <code>null</code> if no match found
+     * @see #getKeyDecoderByAlgorithm(String)
+     */
+    public static final KeyDecoder getKeyDecoderByKey(Key key) {
+        return getKeyDecoderByAlgorithm(Validate.notNull(key, "No key", ArrayUtils.EMPTY_OBJECT_ARRAY).getAlgorithm());
     }
 
     /**
@@ -244,8 +260,8 @@ public class KeyUtils {
      * @return The standard OpenSSH file name used to hold the public key for
      * the specified algorithm
      */
-    public static final String getStandardPublicKeyFilename(String algorithm) {
-        return getStandardKeyFilename(algorithm, true);
+    public static final String getStandardOpenSSHPublicKeyFilename(String algorithm) {
+        return getStandardOpenSSHKeyFilename(algorithm, true);
     }
     
     /**
@@ -254,8 +270,8 @@ public class KeyUtils {
      * @return The standard OpenSSH file name used to hold the private key for
      * the specified algorithm
      */
-    public static final String getStandardPrivateKeyFilename(String algorithm) {
-        return getStandardKeyFilename(algorithm, false);
+    public static final String getStandardOpenSSHPrivateKeyFilename(String algorithm) {
+        return getStandardOpenSSHKeyFilename(algorithm, false);
     }
     
     /**
@@ -266,7 +282,7 @@ public class KeyUtils {
      * @return The standard OpenSSH file name used to hold the public/private key for
      * the specified algorithm
      */
-    public static final String getStandardKeyFilename(String algorithm, boolean publicKey) {
+    public static final String getStandardOpenSSHKeyFilename(String algorithm, boolean publicKey) {
         Validate.notEmpty(algorithm, "No key algorithm specified", ArrayUtils.EMPTY_OBJECT_ARRAY);
         // TODO consider caching these values since they are constants in effect
         return new StringBuilder(STD_KEYFILE_NAME_PREFIX.length() + algorithm.length() + PUBLIC_KEYFILE_EXT.length() /* worst case */)
@@ -287,11 +303,11 @@ public class KeyUtils {
      * @param password The private key password ({@code null}/empty if not encrypted)
      * @return A {@link KeyPair} with the loaded files
      * @throws IOException If failed to read or decode the keys
-     * @see #loadPublicKey(File)
+     * @see #loadOpenSSHPublicKey(File)
      * @see #loadPEMPrivateKey(File, String)
      */
-    public static final KeyPair loadKeyPair(File dir, String baseName, String password) throws IOException {
-        PublicKey   pubKey=KeyUtils.loadPublicKey(new File(dir, baseName + PUBLIC_KEYFILE_EXT));
+    public static final KeyPair loadOpenSSHKeyPair(File dir, String baseName, String password) throws IOException {
+        PublicKey   pubKey=KeyUtils.loadOpenSSHPublicKey(new File(dir, baseName + PUBLIC_KEYFILE_EXT));
         PrivateKey  prvKey=KeyUtils.loadPEMPrivateKey(new File(dir, baseName), password);
         return new KeyPair(pubKey, prvKey);
     }
@@ -305,12 +321,12 @@ public class KeyUtils {
      * @param password The private key password ({@code null}/empty if not encrypted)
      * @return A {@link KeyPair} with the loaded files
      * @throws IOException If failed to read or decode the keys
-     * @see #loadPublicKey(URL)
+     * @see #loadOpenSSHPublicKey(URL)
      * @see #loadPEMPrivateKey(URL, String)
      */
-    public static final KeyPair loadKeyPair(URL url, String password) throws IOException {
+    public static final KeyPair loadOpenSSHKeyPair(URL url, String password) throws IOException {
         String      baseURL=url.toExternalForm();
-        PublicKey   pubKey=KeyUtils.loadPublicKey(new URL(baseURL + PUBLIC_KEYFILE_EXT));
+        PublicKey   pubKey=KeyUtils.loadOpenSSHPublicKey(new URL(baseURL + PUBLIC_KEYFILE_EXT));
         PrivateKey  prvKey=KeyUtils.loadPEMPrivateKey(url, password);
         return new KeyPair(pubKey, prvKey);
     }
@@ -336,7 +352,7 @@ public class KeyUtils {
      * @see #getDefaultKeysFolder()
      */
     public static final KeyPair loadDefaultKeyPair(String algorithm, String password) throws IOException {
-        return loadKeyPair(getDefaultKeysFolder(), getStandardPrivateKeyFilename(algorithm), password);
+        return loadOpenSSHKeyPair(getDefaultKeysFolder(), getStandardOpenSSHPrivateKeyFilename(algorithm), password);
     }
 
     /**
@@ -347,7 +363,7 @@ public class KeyUtils {
      * @see #getDefaultKeysFolder()
      */
     public static final PublicKey loadDefaultPublicKey(String algorithm) throws IOException {
-        return loadPublicKey(new File(getDefaultKeysFolder(), getStandardPublicKeyFilename(algorithm)));
+        return loadOpenSSHPublicKey(new File(getDefaultKeysFolder(), getStandardOpenSSHPublicKeyFilename(algorithm)));
     }
 
     /**
@@ -359,7 +375,7 @@ public class KeyUtils {
      * @see #getDefaultKeysFolder()
      */
     public static final PrivateKey loadDefaultPrivateKey(String algorithm, String password) throws IOException {
-        return loadPEMPrivateKey(new File(getDefaultKeysFolder(), getStandardPrivateKeyFilename(algorithm)), password);
+        return loadPEMPrivateKey(new File(getDefaultKeysFolder(), getStandardOpenSSHPrivateKeyFilename(algorithm)), password);
     }
 
     /**
@@ -367,10 +383,10 @@ public class KeyUtils {
      * @return The decoded {@link PublicKey}
      * @throws IOException If failed to access the file or decode its contents
      */
-    public static final PublicKey loadPublicKey(File file) throws IOException {
+    public static final PublicKey loadOpenSSHPublicKey(File file) throws IOException {
         BufferedReader  rdr=new BufferedReader(new FileReader(file));
         try {
-            return loadPublicKey(rdr);
+            return loadOpenSSHPublicKey(rdr);
         } finally {
             rdr.close();
         }
@@ -380,10 +396,10 @@ public class KeyUtils {
      * @param url The {@link URL} to load the public key from
      * @return The decoded {@link PublicKey}
      * @throws IOException If failed to access the resource or decode its contents
-     * @see #loadPublicKey(InputStream, boolean)
+     * @see #loadOpenSSHPublicKey(InputStream, boolean)
      */
-    public static final PublicKey loadPublicKey(URL url) throws IOException {
-        return loadPublicKey(url.openStream(), true);
+    public static final PublicKey loadOpenSSHPublicKey(URL url) throws IOException {
+        return loadOpenSSHPublicKey(url.openStream(), true);
     }
     
     /**
@@ -392,14 +408,14 @@ public class KeyUtils {
      * of success or failure
      * @return The decoded {@link PublicKey}
      * @throws IOException If failed to access the data or decode its contents
-     * @see #loadPublicKey(BufferedReader)
+     * @see #loadOpenSSHPublicKey(BufferedReader)
      */
-    public static final PublicKey loadPublicKey(InputStream in, boolean okToClose) throws IOException {
+    public static final PublicKey loadOpenSSHPublicKey(InputStream in, boolean okToClose) throws IOException {
         @SuppressWarnings("resource")
         BufferedReader  rdr=new BufferedReader(
                 new InputStreamReader(okToClose ? in : new CloseShieldInputStream(in)));
         try {
-            return loadPublicKey(rdr);
+            return loadOpenSSHPublicKey(rdr);
         } finally {
             rdr.close();
         }
@@ -410,7 +426,7 @@ public class KeyUtils {
      * @return The decoded {@link PublicKey}
      * @throws IOException If failed to access the data or decode its contents
      */
-    public static final PublicKey loadPublicKey(BufferedReader rdr) throws IOException {
+    public static final PublicKey loadOpenSSHPublicKey(BufferedReader rdr) throws IOException {
         Collection<CryptoKeyEntry>  entries=CryptoKeyEntry.readAuthorizedKeys(rdr);
         if (ExtendedCollectionUtils.isEmpty(entries)) {
             throw new StreamCorruptedException("No key data");
@@ -421,7 +437,88 @@ public class KeyUtils {
         }
         
         CryptoKeyEntry  keyEntry=ExtendedCollectionUtils.getFirstMember(entries);
-        return keyEntry.decodePublicKey();  
+        return keyEntry.decodeOpenSSHPublicKey();  
+    }
+
+    /**
+     * @param file The output {@link File}
+     * @param key The {@link PublicKey} instance
+     * @param extraInfo Extra data to be appended at the end of the generated
+     * key text
+     * @throws IOException If failed to generate the key text
+     */
+    public static final void writeOpenSSHPublicKey(File file, PublicKey key, String extraInfo) throws IOException {
+        Writer  w=new FileWriter(file);
+        try {
+            appendOpenSSHPublicKey(w, key, extraInfo);
+        } finally {
+            w.close();
+        }
+    }
+
+    /**
+     * @param filePath The output file path
+     * @param key The {@link PublicKey} instance
+     * @param extraInfo Extra data to be appended at the end of the generated
+     * key text
+     * @throws IOException If failed to generate the key text
+     */
+    public static final void writeOpenSSHPublicKey(String filePath, PublicKey key, String extraInfo) throws IOException {
+        Writer  w=new FileWriter(filePath);
+        try {
+            appendOpenSSHPublicKey(w, key, extraInfo);
+        } finally {
+            w.close();
+        }
+    }
+
+    /**
+     * @param s The {@link OutputStream}
+     * @param okToClose <code>true</code> if OK to close the stream regardless
+     * of success or failure
+     * @param key The {@link PublicKey} instance
+     * @param extraInfo Extra data to be appended at the end of the generated
+     * key text
+     * @throws IOException If failed to generate the key text
+     */
+    public static final void writeOpenSSHPublicKey(OutputStream s, boolean okToClose, PublicKey key, String extraInfo) throws IOException {
+        Writer  w=new OutputStreamWriter(ExtendedCloseShieldOutputStream.resolveOutputStream(s, okToClose));
+        try {
+            appendOpenSSHPublicKey(w, key, extraInfo);
+        } finally {
+            w.close();
+        }
+    }
+
+    /**
+     * @param sb The {@link Appendable} instance for generating the OpenSSH
+     * public key data
+     * @param key The {@link PublicKey} instance
+     * @param extraInfo Extra data to be appended at the end of the generated
+     * key text
+     * @return The same {@link Appendable} instance as the input
+     * @throws IOException If failed to generate the key text
+     */
+    public static final <A extends Appendable> A appendOpenSSHPublicKey(A sb, PublicKey key, String extraInfo) throws IOException {
+        KeyDecoder  decoder=KeyUtils.getKeyDecoderByKey(key);
+        if (decoder == null) {
+            throw new FileNotFoundException("No matching decoder for " + key.getAlgorithm());
+        }
+
+        ByteArrayOutputStream   keyData=new ByteArrayOutputStream();
+        try {
+            decoder.encodeOpenSSHPublicKey(keyData, key);
+        } finally {
+            keyData.close();
+        }
+
+        sb.append(decoder.getKeyType()).append(' ').append(Base64.encodeBase64String(keyData.toByteArray()));
+        
+        if (!StringUtils.isEmpty(extraInfo)) {
+            sb.append(' ').append(extraInfo);
+        }
+        
+        return sb;
     }
 
     public static final String  SSH2_PUBLIC_KEY_START_MARKER="- BEGIN SSH2 PUBLIC KEY -";
@@ -447,7 +544,7 @@ public class KeyUtils {
      * @param url The {@link URL} to load the public key from
      * @return The decoded {@link PublicKey}
      * @throws IOException If failed to access the resource or decode its contents
-     * @see #loadPublicKey(InputStream, boolean)
+     * @see #loadOpenSSHPublicKey(InputStream, boolean)
      */
     public static final PublicKey loadSSH2PublicKey(URL url) throws IOException {
         return loadSSH2PublicKey(url.openStream(), true);
@@ -460,7 +557,7 @@ public class KeyUtils {
      * of success or failure
      * @return The decoded {@link PublicKey}
      * @throws IOException If failed to access the data or decode its contents
-     * @see #loadPublicKey(BufferedReader)
+     * @see #loadOpenSSHPublicKey(BufferedReader)
      */
     public static final PublicKey loadSSH2PublicKey(InputStream in, boolean okToClose) throws IOException {
         @SuppressWarnings("resource")
@@ -495,7 +592,7 @@ public class KeyUtils {
                     }
                     
                     if (line.contains(SSH2_PUBLIC_KEY_END_MARKER)) {
-                        return decodePublicKey(keyData.toString());
+                        return decodeOpenSSHPublicKey(keyData.toString());
                     }
                     
                     keyData.append(line);
@@ -545,12 +642,12 @@ public class KeyUtils {
      * @return The decoded {@link PublicKey}
      * @throws IOException If required key algorithm not supported
      */
-    public static final PublicKey decodePublicKey(String b64Data) throws IOException {
+    public static final PublicKey decodeOpenSSHPublicKey(String b64Data) throws IOException {
         String  effData=Validate.notEmpty(StringUtils.trimToEmpty(b64Data), "No key data", ArrayUtils.EMPTY_OBJECT_ARRAY);
         
         int pos=effData.indexOf(' ');
         if (pos < 0) {  // check if key type specified and known
-            return decodePublicKey(Base64.decodeBase64(effData));
+            return decodeOpenSSHPublicKey(Base64.decodeBase64(effData));
         }
 
         String      keyType=StringUtils.trimToEmpty(effData.substring(0, pos));
@@ -569,7 +666,7 @@ public class KeyUtils {
             throw new StreamCorruptedException("No BASE64 data in " + b64Data);
         }
         
-        PublicKey   key=decodePublicKey(Base64.decodeBase64(effData));
+        PublicKey   key=decodeOpenSSHPublicKey(Base64.decodeBase64(effData));
         String      expectedAlgorithm=decoder.getAlgorithm(), actualAlgorithm=key.getAlgorithm();
         if (!expectedAlgorithm.equalsIgnoreCase(actualAlgorithm)) {
             throw new StreamCorruptedException("Mismatched public key algorithms"
@@ -585,8 +682,8 @@ public class KeyUtils {
      * @return The decoded {@link PublicKey} instance
      * @throws IOException If invalid bytes contents
      */
-    public static final PublicKey decodePublicKey(byte ... keyBytes) throws IOException {
-        return decodePublicKey(keyBytes, 0, keyBytes.length);
+    public static final PublicKey decodeOpenSSHPublicKey(byte ... keyBytes) throws IOException {
+        return decodeOpenSSHPublicKey(keyBytes, 0, keyBytes.length);
     }
 
     /**
@@ -596,8 +693,8 @@ public class KeyUtils {
      * @return The decoded {@link PublicKey} instance
      * @throws IOException If invalid bytes contents
      */
-    public static final PublicKey decodePublicKey(byte[] keyBytes, int off, int len) throws IOException {
-        return decodePublicKey(new ByteArrayInputStream(keyBytes, off, len));
+    public static final PublicKey decodeOpenSSHPublicKey(byte[] keyBytes, int off, int len) throws IOException {
+        return decodeOpenSSHPublicKey(new ByteArrayInputStream(keyBytes, off, len));
     }
 
     /**
@@ -605,14 +702,14 @@ public class KeyUtils {
      * @return The decoded {@link PublicKey} instance
      * @throws IOException If invalid bytes contents
      */
-    public static final PublicKey decodePublicKey(InputStream s) throws IOException {
+    public static final PublicKey decodeOpenSSHPublicKey(InputStream s) throws IOException {
         String      type=AbstractKeyDecoder.decodeString(s);
         KeyDecoder  decoder=getKeyDecoderByKeyType(type);
         if (decoder == null) {
             throw new StreamCorruptedException("No decoder found for key type=" + type);
         }
         
-        return decoder.decodePublicKey(s);
+        return decoder.decodeOpenSSHPublicKey(s);
     }
     
     /**
@@ -694,6 +791,7 @@ public class KeyUtils {
 
     public static final String PEM_PKCS8_BEGIN_MARKER= "-BEGIN PRIVATE KEY-";
         public static final String PEM_PKCS8_END_MARKER="-END PRIVATE KEY-";
+    public static final String  PKCS8_FORMAT="PKCS#8";
 
     /**
      * @param rdr The {@link BufferedReader} through which to read the PEM data
@@ -724,6 +822,29 @@ public class KeyUtils {
          throw new StreamCorruptedException("Invalid/Unsupported PEM file format");
     }
 
+    public static final <A extends Appendable> A appendPEMPrivateKey(A sb, PrivateKey key, String password) throws IOException {
+        KeyDecoder  decoder=getKeyDecoderByKey(key);
+        if (decoder == null) {
+            throw new FileNotFoundException("No decoder for " + key.getAlgorithm());
+        }
+        
+        decoder.appendPEMBeginMarker(sb).append(SystemUtils.LINE_SEPARATOR);
+
+        ByteArrayOutputStream   baos=new ByteArrayOutputStream();
+        try {
+            decoder.encodePEMPrivateKey(key, baos, true, password);
+        } finally {
+            baos.close();
+        }
+        
+        Base64  b64Encoder=new Base64(72, SystemUtils.LINE_SEPARATOR.getBytes());
+        String  b64Data=b64Encoder.encodeAsString(baos.toByteArray());
+        sb.append(b64Data).append(SystemUtils.LINE_SEPARATOR);
+
+        decoder.appendPEMEndMarker(sb).append(SystemUtils.LINE_SEPARATOR);
+        return sb;
+    }
+
     // NOTE: assumes reader positioned AFTER begin marker
     public static final PrivateKey loadPEMPrivateKeyPCKS8(BufferedReader rdr) throws IOException {
         StringBuilder   sb=new StringBuilder(1024);
@@ -744,6 +865,7 @@ public class KeyUtils {
         return decodePEMPrivateKeyPKCS8(new Base64().decode(keyData));
     }
 
+    // TODO add support for DSS decoder as well
     public static final PrivateKey decodePEMPrivateKeyPKCS8(byte... keyBytes) throws IOException {
         try {
             return RSAKeyDecoder.DECODER.generatePrivateKey(new PKCS8EncodedKeySpec(keyBytes));

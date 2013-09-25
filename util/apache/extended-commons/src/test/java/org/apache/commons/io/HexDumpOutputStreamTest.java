@@ -15,18 +15,20 @@
  * limitations under the License.
  */
 
-package org.apache.commons.io.input;
+package org.apache.commons.io;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.LineLevelAppender;
-import org.apache.commons.io.output.NullOutputStream;
+import org.apache.commons.io.output.StringBuilderWriter;
+import org.apache.commons.io.output.WriterOutputStream;
+import org.apache.commons.lang3.ExtendedClassUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.test.AbstractTestSupport;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
@@ -34,29 +36,40 @@ import org.junit.runners.MethodSorters;
 
 /**
  * @author Lyor G.
- * @since Sep 15, 2013 12:15:10 PM
+ * @since Sep 25, 2013 10:20:08 AM
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class LineInputStreamTest extends AbstractTestSupport {
-    public LineInputStreamTest() {
+public class HexDumpOutputStreamTest extends AbstractTestSupport {
+    public HexDumpOutputStreamTest() {
         super();
     }
 
     @Test
-    public void testLineInputStream() throws IOException {
-        testStreamCorrectness(false);
-    }
+    public void testStreamCorrectness() throws IOException {
+        URL url=ExtendedClassUtils.getClassBytesURL(getClass());
+        assertNotNull("Cannot locate test bytes", url);
+        
+        byte[]              data=IOUtils.toByteArray(url);
+        StringBuilderWriter writer=new StringBuilderWriter(data.length * 4 + Long.SIZE);
+        try {
+            WriterOutputStream  output=new WriterOutputStream(writer);
+            try {
+                HexDump.dump(data, 0L, output, 0);
+            } finally {
+                output.close();
+            }
+        } finally {
+            writer.close();
+        }
+        
+        String          strData=writer.toString();
+        String[]        lines=StringUtils.splitByWholeSeparator(strData, HexDump.EOL);
+        List<String>    expected=new ArrayList<String>(Arrays.asList(lines));
+        // compensate for last EOL
+        if (StringUtils.isEmpty(StringUtils.trimToEmpty(lines[lines.length - 1]))) {
+            expected.remove(lines.length - 1);
+        }
 
-    @Test
-    public void testAsciiLineInputStream() throws IOException {
-        testStreamCorrectness(true);
-    }
-
-    private void testStreamCorrectness(boolean useAscii) throws IOException {
-        File    file=getTestJavaSourceFile();
-        assertNotNull("Cannot locate test file", file);
-
-        List<String>        expected=FileUtils.readLines(file);
         final List<String>  actual=new ArrayList<String>(expected.size());
         LineLevelAppender   appender=new LineLevelAppender() {
                 @Override
@@ -69,14 +82,13 @@ public class LineInputStreamTest extends AbstractTestSupport {
                     return true;
                 }
             };
-        LineInputStream     input=new LineInputStream(new FileInputStream(file), useAscii, appender);
+        OutputStream    output=new HexDumpOutputStream(appender);
         try {
-            long    cpySize=IOUtils.copyLarge(input, NullOutputStream.NULL_OUTPUT_STREAM);
-            assertEquals("Mismatched copy size for " + file, file.length(), cpySize);
+            output.write(data);
         } finally {
-            input.close();
+            output.close();
         }
-        
+
         assertEquals("Mismatched number of lines", expected.size(), actual.size());
         for (int    index=0; index < expected.size(); index++) {
             String  expLine=expected.get(index), actLine=actual.get(index);

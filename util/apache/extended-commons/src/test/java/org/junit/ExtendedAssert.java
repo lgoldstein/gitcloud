@@ -18,6 +18,8 @@ package org.junit;
 
 import java.util.Comparator;
 
+import org.junit.internal.ArrayComparisonFailure;
+
 /**
  * @author lgoldstein
  *
@@ -44,6 +46,44 @@ public class ExtendedAssert extends Assert {
     public static final void assertEquals (String message, boolean expected, boolean actual)
     {
     	assertEquals(message, Boolean.valueOf(expected), Boolean.valueOf(actual));
+    }
+
+    public static final void assertArrayEquals(String msg, byte[] expected, byte[] actual, int off, int len) {
+        assertTrue(msg + ": bad offset " + off, off >= 0);
+        assertTrue(msg + ": bad length " + len, len >= 0);
+
+        int maxOffset=off + len;
+        assertTrue(msg + ": start offset " + off + " beyond expected length " + expected.length, off < expected.length);
+        assertTrue(msg + ": end offset " + maxOffset + " beyond expected length " + expected.length, maxOffset <= expected.length);
+
+        assertTrue(msg + ": start offset " + off + " beyond actual length " + actual.length, off < actual.length);
+        assertTrue(msg + ": end offset " + maxOffset + " beyond actual length " + actual.length, maxOffset <= actual.length);
+        
+        for (int index=off; index < maxOffset; index++) {
+            byte    expValue=expected[index], actValue=actual[index];
+            if (expValue != actValue) {
+                throw new ArrayComparisonFailure(msg, new AssertionError(format(msg, Byte.valueOf(expValue), Byte.valueOf(actValue))), index);
+            }
+        }
+    }
+
+    public static final void assertArrayEquals(String msg, char[] expected, char[] actual, int off, int len) {
+        assertTrue(msg + ": bad offset " + off, off >= 0);
+        assertTrue(msg + ": bad length " + len, len >= 0);
+
+        int maxOffset=off + len;
+        assertTrue(msg + ": start offset " + off + " beyond expected length " + expected.length, off < expected.length);
+        assertTrue(msg + ": end offset " + maxOffset + " beyond expected length " + expected.length, maxOffset <= expected.length);
+
+        assertTrue(msg + ": start offset " + off + " beyond actual length " + actual.length, off < actual.length);
+        assertTrue(msg + ": end offset " + maxOffset + " beyond actual length " + actual.length, maxOffset <= actual.length);
+        
+        for (int index=off; index < maxOffset; index++) {
+            char    expValue=expected[index], actValue=actual[index];
+            if (expValue != actValue) {
+                throw new ArrayComparisonFailure(msg, new AssertionError(format(msg, Character.valueOf(expValue), Character.valueOf(actValue))), index);
+            }
+        }
     }
 
     /**
