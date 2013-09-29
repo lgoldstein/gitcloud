@@ -17,6 +17,7 @@ package net.community.chest.gitcloud.facade.frontend.git;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -46,6 +47,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import net.community.chest.gitcloud.facade.ServletUtils;
 
+import org.apache.commons.beanutils.AbstractSimpleJavaBean;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.collections15.SetUtils;
 import org.apache.commons.io.HexDumpOutputStream;
@@ -198,15 +200,15 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
             }
         }
 
-        URI uri=resolveTargetRepository(method, req);
-        if (uri == null) {
+        ResolvedRepositoryData repoData=resolveTargetRepository(method, req);
+        if (repoData == null) {
             throw ExtendedLogUtils.thrownLogging(logger, Level.WARNING,
                     "serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]",
                     new NoSuchElementException("Failed to resolve repository"));
         }
 
         String  username=authenticate(req);
-        // TODO check if the user is allowed to access the repository
+        // TODO check if the user is allowed to access the repository via the resolve operation (push/pull) if at all (e.g., private repo)
         logger.info("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "] user=" + username);
 
         /*
@@ -216,6 +218,7 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
          */
         if (loopDetected) {
             // TODO see if can find a more efficient way than splitting and re-constructing
+            URI             uri=repoData.getRepoLocation();
             ServletContext  curContext=req.getServletContext();
             String          urlPath=uri.getPath(), urlQuery=uri.getQuery();
             String[]        comps=StringUtils.split(urlPath, '/');
@@ -238,7 +241,7 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
                            + " forwarded to " + loopContext.getContextPath() + "/" + redirectPath);
             }
         } else {
-            executeRemoteRequest(method, uri, req, rsp);
+            executeRemoteRequest(method, repoData.getRepoLocation(), req, rsp);
         }
     }
 
@@ -390,7 +393,8 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
         }
     }
 
-    private URI resolveTargetRepository(RequestMethod method, HttpServletRequest req) throws IOException {
+    private ResolvedRepositoryData resolveTargetRepository(RequestMethod method, HttpServletRequest req) throws IOException {
+        ResolvedRepositoryData  repoData=new ResolvedRepositoryData();
         String  op=StringUtils.trimToEmpty(req.getParameter("service")), uriPath=req.getPathInfo();
         if (StringUtils.isEmpty(op)) {
             int pos=uriPath.lastIndexOf('/');
@@ -404,6 +408,7 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
                     "resolveTargetRepository(" + method + " " + uriPath + ")",
                     new UnsupportedOperationException("Unsupported operation: " + op));
         }
+        repoData.setOperation(op);
         
         String repoName=extractRepositoryName(uriPath);
         if (StringUtils.isEmpty(repoName)) {
@@ -411,17 +416,68 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
                          "resolveTargetRepository(" + method + " " + uriPath + ")",
                          new IllegalArgumentException("Failed to extract repo name from " + uriPath));
         }
+        repoData.setRepoName(repoName);
 
         // TODO access an injected resolver that returns the back-end location URL
         String  query=req.getQueryString();
         try {
             if (StringUtils.isEmpty(query)) {
-                return new URI("http://localhost:8080/git-backend/git" + uriPath);
+                repoData.setRepoLocation(new URI("http://localhost:8080/git-backend/git" + uriPath));
             } else {
-                return new URI("http://localhost:8080/git-backend/git" + uriPath + "?" + query);
+                repoData.setRepoLocation(new URI("http://localhost:8080/git-backend/git" + uriPath + "?" + query));
             }
         } catch(URISyntaxException e) {
             throw new MalformedURLException(e.getClass().getSimpleName() + ": " + e.getMessage());
+        }
+        
+        return repoData;
+    }
+
+    // TODO move this to a common location for the front-end - to be used by SSH as well
+    public static class ResolvedRepositoryData
+                    extends AbstractSimpleJavaBean
+                    implements Cloneable, Serializable {
+        private static final long serialVersionUID = -2619946255863098003L;
+
+        private String  operation;
+        private String  repoName;
+        private URI     repoLocation;
+        
+        public ResolvedRepositoryData() {
+            super();
+        }
+
+        public String getOperation() {
+            return operation;
+        }
+
+        public void setOperation(String op) {
+            operation = op;
+        }
+
+        public String getRepoName() {
+            return repoName;
+        }
+
+        public void setRepoName(String name) {
+            repoName = name;
+        }
+
+        public URI getRepoLocation() {
+            return repoLocation;
+        }
+
+        public void setRepoLocation(URI location) {
+            repoLocation = location;
+        }
+
+        @Override
+        public ResolvedRepositoryData clone() {
+            try {
+                return getClass().cast(super.clone());
+            } catch(CloneNotSupportedException e) {
+                throw new RuntimeException(e);  // unexpected
+            }
         }
     }
 
