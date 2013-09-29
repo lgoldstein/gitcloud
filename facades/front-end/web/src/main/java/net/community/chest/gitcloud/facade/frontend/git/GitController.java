@@ -256,6 +256,7 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
                 rsp.sendError(statusCode, reason);
             } else {
                 rsp.setStatus(statusCode);
+                
                 copyResponseHeadersValues(req, response, rsp);
                 transferBackendResponse(req, rspEntity, rsp);
             }
@@ -415,6 +416,12 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
                 private static final long serialVersionUID = 1L;
 
                 {
+                    /*
+                     * Apache HTTP client de-chunks it for us and subsequently
+                     * the HttpServletResponse implementation decides how to
+                     * re-wrap it 
+                     */
+                    add(HTTP.TRANSFER_ENCODING);
                     // other headers we don't want to echo as-is
                     add(HTTP.SERVER_HEADER);
                 }

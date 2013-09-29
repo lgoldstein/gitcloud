@@ -1,0 +1,57 @@
+Pushing to http://localhost:8080/git-frontend/git/test-project.git
+* Couldn't find host localhost in the _netrc file; using defaults
+* About to connect() to localhost port 8080 (#0)
+*   Trying 127.0.0.1... * connected
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+* 0x21dd7e0 is at send pipe head!
+> GET /git-frontend/git/test-project.git/info/refs?service=git-receive-pack HTTP/1.1
+User-Agent: git/1.8.1.msysgit.1
+Host: localhost:8080
+Accept: */*
+Accept-Encoding: gzip
+Pragma: no-cache
+
+< HTTP/1.1 200 OK
+< Server: Apache-Coyote/1.1
+< Expires: Fri, 01 Jan 1980 00:00:00 GMT
+< Pragma: no-cache
+< Cache-Control: no-cache, max-age=0, must-revalidate
+< Date: Sun, 29 Sep 2013 06:16:52 GMT
+< Content-Type: application/x-git-receive-pack-advertisement
+< Content-Length: 154
+<
+* Connection #0 to host localhost left intact
+Counting objects: 4, done.
+Delta compression using up to 4 threads.
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 550 bytes, done.
+Total 3 (delta 0), reused 0 (delta 0)
+POST git-receive-pack (686 bytes)
+* Couldn't find host localhost in the _netrc file; using defaults
+* About to connect() to localhost port 8080 (#0)
+*   Trying 127.0.0.1... * connected
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> POST /git-frontend/git/test-project.git/git-receive-pack HTTP/1.1
+User-Agent: git/1.8.1.msysgit.1
+Host: localhost:8080
+Accept-Encoding: gzip
+Content-Type: application/x-git-receive-pack-request
+Accept: application/x-git-receive-pack-result
+Content-Length: 686
+
+< HTTP/1.1 200 OK
+< Server: Apache-Coyote/1.1
+< Expires: Fri, 01 Jan 1980 00:00:00 GMT
+< Pragma: no-cache
+< Cache-Control: no-cache, max-age=0, must-revalidate
+< Transfer-Encoding: chunked
+< Date: Sun, 29 Sep 2013 06:16:52 GMT
+< Content-Type: application/x-git-receive-pack-result
+< Content-Length: 129
+<
+* Received problem 3 in the chunky parser
+* Closing connection #0
+error: RPC failed; result=56, HTTP code = 200
+fatal: The remote end hung up unexpectedly
+fatal: recursion detected in die handler
+Everything up-to-date
