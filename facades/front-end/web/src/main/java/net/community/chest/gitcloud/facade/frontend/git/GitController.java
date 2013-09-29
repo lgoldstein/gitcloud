@@ -100,6 +100,18 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
                                             + SystemPropertyUtils.VALUE_SEPARATOR
                                             + DEFAULT_LOOP_DETECT_TIMEOUT
                                             + SystemPropertyUtils.PLACEHOLDER_SUFFIX;
+    // TODO move this to some 'util' artifact
+    public static final RedirectStrategy    NO_REDIRECTION=new RedirectStrategy() {
+            @Override
+            public boolean isRedirected(HttpRequest request, HttpResponse response, HttpContext context) throws ProtocolException {
+                return false;
+            }
+            
+            @Override
+            public HttpUriRequest getRedirect(HttpRequest request, HttpResponse response, HttpContext context) throws ProtocolException {
+                throw new ProtocolException("getRedirect(" + request + ")[" + response + "] N/A");
+            }
+        };
 
     private final MBeanServer   mbeanServer;
     private final CloseableHttpClient   client;
@@ -212,18 +224,6 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
         }
     }
 
-    // TODO move this to some 'util' artifact
-    public static final RedirectStrategy    NO_REDIRECTION=new RedirectStrategy() {
-            @Override
-            public boolean isRedirected(HttpRequest request, HttpResponse response, HttpContext context) throws ProtocolException {
-                return false;
-            }
-            
-            @Override
-            public HttpUriRequest getRedirect(HttpRequest request, HttpResponse response, HttpContext context) throws ProtocolException {
-                throw new ProtocolException("getRedirect(" + request + ")[" + response + "] N/A");
-            }
-        };
     private void executeRemoteRequest(RequestMethod method, URI uri, HttpServletRequest req, HttpServletResponse rsp) throws IOException {
         if (logger.isDebugEnabled()) {
             logger.debug("executeRemoteRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
@@ -355,20 +355,26 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
         }
     }
 
-    // see RequestContent#process method
     public static final SortedSet<String>   FILTERED_REQUEST_HEADERS=
             SetUtils.unmodifiableSortedSet(new TreeSet<String>(String.CASE_INSENSITIVE_ORDER) {
                 // we're not serializing it anywhere
                 private static final long serialVersionUID = 1L;
 
                 {
+                    // see RequestContent#process method
                     add(HTTP.TRANSFER_ENCODING);
                     add(HTTP.CONTENT_LEN);
+                    
+                    // other headers we don't want to echo as-is
+                    add(HTTP.CONN_DIRECTIVE);
+                    add(HTTP.TARGET_HOST);
                 }
             });
     // TODO move this to some generic util location
     private Map<String,String> copyRequestHeadersValues(HttpServletRequest req, HttpRequestBase request) {
         Map<String,String>  hdrsMap=ServletUtils.getRequestHeaders(req);
+        // NOTE: headers name must be case insensitive as per HTTP requirements
+        Set<String>         removedHeaders=new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
         for (Map.Entry<String,String> hdrEntry : hdrsMap.entrySet()) {
             String  hdrName=hdrEntry.getKey(), hdrValue=StringUtils.trimToEmpty(hdrEntry.getValue());
             if (StringUtils.isEmpty(hdrValue)) {
@@ -378,21 +384,24 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
             }
 
             if (FILTERED_REQUEST_HEADERS.contains(hdrName)) {
+                removedHeaders.add(hdrName);
                 if (logger.isTraceEnabled()) {
                     logger.trace("copyRequestHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                                + " filtered " + hdrName + ": " + hdrValue);
-                }                
+                }
             } else {
+                if (logger.isTraceEnabled()) {
+                    logger.trace("copyRequestHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                               + " " + hdrName + ": " + hdrValue);
+                }
                 request.addHeader(hdrName, hdrValue);
                 hdrsMap.put(hdrName, hdrValue);
             }
         }
 
-        if (logger.isTraceEnabled()) {
-            for (Map.Entry<String,String> hdrEntry : hdrsMap.entrySet()) {
-                String  hdrName=hdrEntry.getKey(), hdrValue=hdrEntry.getValue();
-                logger.trace("copyRequestHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                           + " " + hdrName + ": " + hdrValue);
+        if (removedHeaders.size() > 0) {
+            for (String hdrName : removedHeaders) {
+                hdrsMap.remove(hdrName);
             }
         }
 
@@ -400,6 +409,16 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
     }
 
     // TODO move this to some generic util location
+    public static final SortedSet<String>   FILTERED_RESPONSE_HEADERS=
+            SetUtils.unmodifiableSortedSet(new TreeSet<String>(String.CASE_INSENSITIVE_ORDER) {
+                // we're not serializing it anywhere
+                private static final long serialVersionUID = 1L;
+
+                {
+                    // other headers we don't want to echo as-is
+                    add(HTTP.SERVER_HEADER);
+                }
+            });
     private Map<String,String> copyResponseHeadersValues(HttpServletRequest req, HttpMessage response, HttpServletResponse rsp) {
         Header[]  hdrs=response.getAllHeaders();
         if (ArrayUtils.isEmpty(hdrs)) {
@@ -412,6 +431,14 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
         for (Header hdrEntry : hdrs) {
             // TODO add support for multi-valued headers
             String  hdrName=ServletUtils.capitalizeHttpHeaderName(hdrEntry.getName()), hdrValue=StringUtils.trimToEmpty(hdrEntry.getValue());
+            if (FILTERED_RESPONSE_HEADERS.contains(hdrName)) {
+                if (logger.isTraceEnabled()) {
+                    logger.trace("copyResponseHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                               + " filtered " + hdrName + ": " + hdrValue);
+                }
+                continue;
+            }
+
             if (StringUtils.isEmpty(hdrValue)) {
                 logger.warn("copyResponseHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                           + " no value for header " + hdrName);

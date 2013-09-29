@@ -86,7 +86,7 @@ public class SshServerDevelopment extends AbstractSshdTestSupport {
                         Validate.notNull(url, resourceName, ArrayUtils.EMPTY_OBJECT_ARRAY);
                         
                         try {
-                            kp = KeyUtils.loadKeyPair(url, null);
+                            kp = KeyUtils.loadOpenSSHKeyPair(url, null);
                         } catch (IOException e) {
                             log.error("loadKey(" + resourceName + ") failed (" + e.getClass().getSimpleName() + "): " + e.getMessage(), e);
                             return null;
