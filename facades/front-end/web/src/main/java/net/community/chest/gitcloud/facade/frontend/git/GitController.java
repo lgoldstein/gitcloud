@@ -22,6 +22,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -48,6 +49,7 @@ import org.apache.commons.io.input.TeeInputStream;
 import org.apache.commons.io.output.LineLevelAppender;
 import org.apache.commons.io.output.TeeOutputStream;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.ExtendedStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.logging.ExtendedLogUtils;
@@ -372,10 +374,9 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
                 }
             });
     // TODO move this to some generic util location
+    // NOTE: returns ALL request headers - even those that were filtered out
     private Map<String,String> copyRequestHeadersValues(HttpServletRequest req, HttpRequestBase request) {
         Map<String,String>  hdrsMap=ServletUtils.getRequestHeaders(req);
-        // NOTE: headers name must be case insensitive as per HTTP requirements
-        Set<String>         removedHeaders=new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
         for (Map.Entry<String,String> hdrEntry : hdrsMap.entrySet()) {
             String  hdrName=hdrEntry.getKey(), hdrValue=StringUtils.trimToEmpty(hdrEntry.getValue());
             if (StringUtils.isEmpty(hdrValue)) {
@@ -385,7 +386,6 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
             }
 
             if (FILTERED_REQUEST_HEADERS.contains(hdrName)) {
-                removedHeaders.add(hdrName);
                 if (logger.isTraceEnabled()) {
                     logger.trace("copyRequestHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                                + " filtered " + hdrName + ": " + hdrValue);
@@ -396,20 +396,14 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
                                + " " + hdrName + ": " + hdrValue);
                 }
                 request.addHeader(hdrName, hdrValue);
-                hdrsMap.put(hdrName, hdrValue);
             }
-        }
 
-        if (removedHeaders.size() > 0) {
-            for (String hdrName : removedHeaders) {
-                hdrsMap.remove(hdrName);
-            }
+            hdrsMap.put(hdrName, hdrValue);
         }
 
         return hdrsMap;
     }
 
-    // TODO move this to some generic util location
     public static final SortedSet<String>   FILTERED_RESPONSE_HEADERS=
             SetUtils.unmodifiableSortedSet(new TreeSet<String>(String.CASE_INSENSITIVE_ORDER) {
                 // we're not serializing it anywhere
@@ -426,18 +420,31 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
                     add(HTTP.SERVER_HEADER);
                 }
             });
+    public static final Comparator<Header>  BY_NAME_COMPARATOR=new Comparator<Header>() {
+            @Override
+            public int compare(Header h1, Header h2) {
+                String  n1=(h1 == null) ? null : h1.getName();
+                String  n2=(h2 == null) ? null : h2.getName();
+                // header names are case-insensitive
+                return ExtendedStringUtils.safeCompare(n1, n2, false);
+            }
+        };
+    // TODO move this to some generic util location
+    // NOTE: returns ALL response headers - even those that were filtered out
     private Map<String,String> copyResponseHeadersValues(HttpServletRequest req, HttpMessage response, HttpServletResponse rsp) {
         Header[]  hdrs=response.getAllHeaders();
         if (ArrayUtils.isEmpty(hdrs)) {
             logger.warn("copyResponseHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "] no headers");
             return Collections.emptyMap();
         }
+        Arrays.sort(hdrs, BY_NAME_COMPARATOR);
 
         // NOTE: map must be case insensitive as per HTTP requirements
         Map<String,String>  hdrsMap=new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
         for (Header hdrEntry : hdrs) {
             // TODO add support for multi-valued headers
             String  hdrName=ServletUtils.capitalizeHttpHeaderName(hdrEntry.getName()), hdrValue=StringUtils.trimToEmpty(hdrEntry.getValue());
+            hdrsMap.put(hdrName, hdrValue);
             if (FILTERED_RESPONSE_HEADERS.contains(hdrName)) {
                 if (logger.isTraceEnabled()) {
                     logger.trace("copyResponseHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
@@ -453,16 +460,12 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
                 continue;
             }
 
-            rsp.setHeader(hdrName, hdrValue);
-            hdrsMap.put(hdrName, hdrValue);
-        }
-        
-        if (logger.isTraceEnabled()) {
-            for (Map.Entry<String,String> hdrEntry : hdrsMap.entrySet()) {
-                String  hdrName=hdrEntry.getKey(), hdrValue=hdrEntry.getValue();
+            if (logger.isTraceEnabled()) {
                 logger.trace("copyResponseHeadersValues(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
                            + " " + hdrName + ": " + hdrValue);
             }
+
+            rsp.setHeader(hdrName, hdrValue);
         }
 
         return hdrsMap;
