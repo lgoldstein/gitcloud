@@ -20,10 +20,13 @@ import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.Charset;
+import java.security.Principal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeMap;
@@ -43,6 +46,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import net.community.chest.gitcloud.facade.ServletUtils;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.collections15.SetUtils;
 import org.apache.commons.io.HexDumpOutputStream;
 import org.apache.commons.io.input.TeeInputStream;
@@ -60,7 +64,9 @@ import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.ProtocolException;
 import org.apache.http.StatusLine;
+import org.apache.http.auth.AUTH;
 import org.apache.http.client.RedirectStrategy;
+import org.apache.http.client.config.AuthSchemes;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
 import org.apache.http.client.methods.HttpGet;
@@ -185,19 +191,29 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
                 } catch(JMException e) {
                     if (logger.isDebugEnabled()) {
                         logger.debug("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
-                                + " failed " + e.getClass().getSimpleName()
-                                + " to detect loop: " + e.getMessage());
+                                   + " failed " + e.getClass().getSimpleName()
+                                   + " to detect loop: " + e.getMessage());
                     }
                 }
             }
         }
+
+        URI uri=resolveTargetRepository(method, req);
+        if (uri == null) {
+            throw ExtendedLogUtils.thrownLogging(logger, Level.WARNING,
+                    "serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]",
+                    new NoSuchElementException("Failed to resolve repository"));
+        }
+
+        String  username=authenticate(req);
+        // TODO check if the user is allowed to access the repository
+        logger.info("serveRequest(" + method + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "] user=" + username);
 
         /*
          * NOTE: this feature requires enabling cross-context forwarding.
          * In Tomcat, the 'crossContext' attribute in 'Context' element of
          * 'TOMCAT_HOME\conf\context.xml' must be set to true, to enable cross-context 
          */
-        URI uri=resolveTargetRepository(method, req);
         if (loopDetected) {
             // TODO see if can find a more efficient way than splitting and re-constructing
             ServletContext  curContext=req.getServletContext();
@@ -224,6 +240,57 @@ public class GitController extends RefreshedContextAttacher implements Disposabl
         } else {
             executeRemoteRequest(method, uri, req, rsp);
         }
+    }
+
+    String authenticate(HttpServletRequest req) throws IOException {
+        Principal   principal=req.getUserPrincipal();   // check if already authenticated
+        String      username=(principal == null) ? null : principal.getName();
+        if (!StringUtils.isEmpty(username)) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("authenticate(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                           + " using principal=" + username);
+            }
+
+            return username;
+        }
+        
+        // TODO try to authenticate by cookie (if feature allowed) - see GitBlit#authenticate
+        String authorization=StringUtils.trimToEmpty(req.getHeader(AUTH.WWW_AUTH_RESP));
+        if (StringUtils.isEmpty(authorization)) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("authenticate(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "] no authorization data");
+            }
+            return null;
+        }
+        
+        // TODO add support for more authorization schemes - including password-less HTTP
+        if (!authorization.startsWith(AuthSchemes.BASIC)) {
+            logger.warn("authenticate(" + req.getMethod() + ")[" + req.getRequestURI() + "][" + req.getQueryString() + "]"
+                      + " unsupported authentication scheme: " + authorization);
+            return null;
+        }
+        
+        String      b64Credentials=authorization.substring(AuthSchemes.BASIC.length()).trim();
+        byte[]      credBytes=Base64.decodeBase64(b64Credentials);
+        String      credentials=new String(credBytes, Charset.forName("UTF-8"));
+        String[]    credValues=StringUtils.split(credentials, ':');
+        Validate.isTrue(credValues.length == 2, "Bad " + AuthSchemes.BASIC + " credentials format: %s", credentials);
+
+        username = StringUtils.trimToEmpty(credValues[0]);
+        String  password=StringUtils.trimToEmpty(credValues[1]);
+        if (authenticate(username, password)) {
+            return username;
+        } else {
+            return null;
+        }
+    }
+
+    boolean authenticate(String username, String password) {
+        Validate.notEmpty(username, "No username", ArrayUtils.EMPTY_OBJECT_ARRAY);
+        Validate.notEmpty(password, "No password", ArrayUtils.EMPTY_OBJECT_ARRAY);
+        // TODO inject an AuthenticationProvider or Manager and use it
+        logger.warn("authenticate(" + username + ") N/A");
+        return false;
     }
 
     private void executeRemoteRequest(RequestMethod method, URI uri, HttpServletRequest req, HttpServletResponse rsp) throws IOException {
