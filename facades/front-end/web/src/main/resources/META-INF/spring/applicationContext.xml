@@ -18,14 +18,14 @@
            http://www.springframework.org/schema/util
            http://www.springframework.org/schema/util/spring-util.xsd">
 
-        <!-- Note: name must match: net.community.chest.gitcloud.facade.backend.FacadeEnvironmentInitializer#PROPS_FILE_NAME -->
-    <context:property-placeholder
-        location="file:${gitcloud.base}${file.separator}conf${file.separator}gitcloud-frontend.properties"
-        system-properties-mode="ENVIRONMENT"
-        ignore-unresolvable="false"
-      />
         <!-- workaround for https://jira.springsource.org/browse/SPR-10907 -->
+        <!-- Note: name must match: net.community.chest.gitcloud.facade.backend.FacadeEnvironmentInitializer#PROPS_FILE_NAME -->
     <util:properties id="gitcloud-frontend-properties" location="file:${gitcloud.base}${file.separator}conf${file.separator}gitcloud-frontend.properties"/>
+    <context:property-placeholder
+                    properties-ref="gitcloud-frontend-properties"
+                    system-properties-mode="ENVIRONMENT"
+                    ignore-unresolvable="false"
+        />
 
     <context:annotation-config />
     
