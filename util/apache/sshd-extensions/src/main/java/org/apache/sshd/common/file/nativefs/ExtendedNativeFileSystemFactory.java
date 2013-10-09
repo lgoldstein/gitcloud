@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.apache.sshd.server.filesystem;
+package org.apache.sshd.common.file.nativefs;
 
 import java.io.File;
 
@@ -22,7 +22,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ExtendedValidate;
 import org.apache.commons.lang3.Validate;
 import org.apache.sshd.common.Session;
-import org.apache.sshd.server.FileSystemView;
+import org.apache.sshd.common.file.FileSystemView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -42,6 +42,8 @@ import org.apache.commons.net.ssh.keys.KeyUtils;
 import org.apache.sshd.common.KeyPairProvider;
 import org.apache.sshd.common.NamedFactory;
 import org.apache.sshd.common.Session;
+import org.apache.sshd.common.file.nativefs.ExtendedNativeFileSystemFactory;
+import org.apache.sshd.common.file.nativefs.NativeFileSystemFactory;
 import org.apache.sshd.server.AbstractCommand;
 import org.apache.sshd.server.Command;
 import org.apache.sshd.server.CommandFactory;
@@ -50,8 +52,6 @@ import org.apache.sshd.server.ExitCallback;
 import org.apache.sshd.server.PasswordAuthenticatorUtils;
 import org.apache.sshd.server.PublickeyAuthenticatorUtils;
 import org.apache.sshd.server.command.ScpCommandFactory;
-import org.apache.sshd.server.filesystem.ExtendedNativeFileSystemFactory;
-import org.apache.sshd.server.filesystem.NativeFileSystemFactory;
 import org.apache.sshd.server.sftp.SftpSubsystem;
 import org.apache.sshd.test.AbstractSshdTestSupport;
 
