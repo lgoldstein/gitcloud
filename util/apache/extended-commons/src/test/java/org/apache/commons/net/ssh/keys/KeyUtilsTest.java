@@ -22,12 +22,17 @@ import java.io.PrintStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.URL;
+import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
@@ -37,6 +42,7 @@ import org.apache.commons.net.ssh.keys.dss.DSSKeyDecoder;
 import org.apache.commons.net.ssh.keys.rsa.RSAKeyDecoder;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
@@ -201,6 +207,36 @@ public class KeyUtilsTest extends AbstractSSHKeysTestSupport {
     @Test
     public void testLoadAES128PasswordProtectedRSAPrivateKey() throws Exception {
         testLoadPasswordProtectedPrivateKey(RSAKeyDecoder.RSA_ALGORITHM, "AES-128");
+    }
+
+    /*
+     * NOTE: this code requires the special JCE cryptographic policy extension
+     * so it checks if it is installed
+     */
+    @Test
+    @Ignore("Under construction - we are decoding the bytes but getting a DER error")
+    public void testLoadAES256PasswordProtectedRSAPrivateKey() throws Exception {
+        byte[]  keyAsBytes=new byte[32];    // AES-256 uses 32 bytes key
+        synchronized(RANDOMIZER) {
+            RANDOMIZER.nextBytes(keyAsBytes);
+        }
+
+        Key     key=new SecretKeySpec(keyAsBytes, "AES");
+        Cipher  c=Cipher.getInstance("AES");
+        try {
+            c.init(Cipher.DECRYPT_MODE, key);
+        } catch(InvalidKeyException e) {
+            logger.warn("No AES-256 support - skipping test");
+            return;
+        }
+        
+        final String    PASSWORD="super secret passphrase";
+        URL             url=getClassResource(PASSWORD.replace(' ', '-') + "-" + RSAKeyDecoder.RSA_ALGORITHM + "-" + "AES-256" + "-key");
+        assertNotNull("Missing test file", url);
+        PrivateKey  prvKey=KeyUtils.loadPEMPrivateKey(url, PASSWORD);
+        PublicKey   pubKey=KeyUtils.recoverPublicKey(prvKey);
+        KeyUtils.appendOpenSSHPublicKey(System.out, pubKey, "hello@world");
+//        testLoadPasswordProtectedPrivateKey(RSAKeyDecoder.RSA_ALGORITHM, "AES-256");
     }
 
     private KeyPair testLoadPasswordProtectedPrivateKey(String algorithm, String encryption) throws Exception {

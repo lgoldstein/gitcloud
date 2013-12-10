@@ -165,7 +165,7 @@ public abstract class AbstractKeyDecoder extends AbstractKeyLoader implements Ke
             throw new IllegalArgumentException("Bad encryption alogrithm data: " + algInfo);
         }
         
-        // TODO decrypt the private key data
+        // TODO use an algorithm specific registered interface to do that...
         String  cipherName=cipherData[0], cipherType=cipherData[1], cipherMode=cipherData[2];
         if ("AES".equalsIgnoreCase(cipherName)) {
             return decryptAESPrivateKey(encBytes, cipherName, cipherType, cipherMode, initVector, password);

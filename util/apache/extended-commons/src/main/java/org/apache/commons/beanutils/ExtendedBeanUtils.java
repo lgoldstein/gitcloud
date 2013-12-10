@@ -611,7 +611,8 @@ public class ExtendedBeanUtils {
      *      (<B>Note:</B> {@link Boolean} wrapper is <U>not</U> considered a valid
      *      return type)
      *      </LI>
-     * </UL
+     * </UL>
+     * @see #isGetterName(CharSequence)
      */
     public static final boolean isGetter(Method m) {
         if (m == null) {
@@ -623,8 +624,7 @@ public class ExtendedBeanUtils {
         }
         
         String  name=m.getName();
-        if ((!ExtendedCharSequenceUtils.isProperPrefix(name, GET_PREFIX, true))
-         && (!ExtendedCharSequenceUtils.isProperPrefix(name, IS_PREFIX, true))) {
+        if (!isGetterName(name)) {
             return false;
         }
         
@@ -638,11 +638,61 @@ public class ExtendedBeanUtils {
             return false;
         }
         
-        if (name.startsWith(IS_PREFIX) && (!Boolean.TYPE.isAssignableFrom(returnType))) {
+        if (isBooleanGetterName(name) && (!Boolean.TYPE.isAssignableFrom(returnType))) {
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * @param name A candidate method name
+     * @return <code>true</code> if the candidate method name is a valid
+     * getter name - i.e., not {@code null}/empty and starts with either
+     * {@link #GET_PREFIX} or {@link #IS_PREFIX}
+     * @see #isBooleanGetterName(CharSequence)
+     * @see #isValueGetterName(CharSequence)
+     */
+    public static final boolean isGetterName(CharSequence name) {
+        if (StringUtils.isEmpty(name)) {
+            return false;
+        } else if (isValueGetterName(name) || isBooleanGetterName(name)) {
+           return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @param name A candidate method name
+     * @return <code>true</code> if the candidate method name is a valid
+     * <U>non-{@code boolean}</U> getter name -  i.e., not {@code null}/empty
+     * and starts with {@link #GET_PREFIX}
+     */
+    public static final boolean isValueGetterName(CharSequence name) {
+        if (StringUtils.isEmpty(name)) {
+            return false;
+        } else if (ExtendedCharSequenceUtils.isProperPrefix(name, GET_PREFIX, true)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @param name A candidate method name
+     * @return <code>true</code> if the candidate method name is a valid
+     * {@code boolean} getter name -  i.e., not {@code null}/empty and starts
+     * with {@link #IS_PREFIX}
+     */
+    public static final boolean isBooleanGetterName(CharSequence name) {
+        if (StringUtils.isEmpty(name)) {
+            return false;
+        } else if (ExtendedCharSequenceUtils.isProperPrefix(name, IS_PREFIX, true)) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -687,7 +737,7 @@ public class ExtendedBeanUtils {
         }
         
         String  name=m.getName();
-        if (!ExtendedCharSequenceUtils.isProperPrefix(name, SET_PREFIX, true)) {
+        if (!isSetterName(name)) {
             return false;
         }
         
@@ -707,6 +757,21 @@ public class ExtendedBeanUtils {
         }
 
         return true;
+    }
+
+    /**
+     * @param name Candidate method name
+     * @return {@code true} if the method name is not {@code null}/empty
+     * and starts with {@link #SET_PREFIX}
+     */
+    public static final boolean isSetterName(CharSequence name) {
+        if (StringUtils.isEmpty(name)) {
+            return false;
+        } else if (ExtendedCharSequenceUtils.isProperPrefix(name, SET_PREFIX, true)) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**

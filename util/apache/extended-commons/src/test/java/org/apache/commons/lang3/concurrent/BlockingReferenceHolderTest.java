@@ -52,7 +52,7 @@ public class BlockingReferenceHolderTest extends AbstractTestSupport {
 
     @Test
     public void testWaitForValueWhenValueAlreadyProvided() throws InterruptedException {
-        String  expected="testWaitForValueWhenValueAlreadyProvided";
+        String  expected=getCurrentTestName();
         BlockingReferenceHolder<String> holder=new BlockingReferenceHolder<String>(expected);
         String  actual=validateWaitTime(expected, holder, TimeUnit.SECONDS.toMillis(1L), 0L, TOLERANCE);
         assertSame("Mismatched consumed value", expected, actual);
@@ -61,7 +61,7 @@ public class BlockingReferenceHolderTest extends AbstractTestSupport {
 
     @Test
     public void testAsynchronousWaitForValue() throws InterruptedException {
-        final String  expected="testAsynchronousWaitForValue";
+        final String  expected=getCurrentTestName();
         final BlockingReferenceHolder<String>   holder=new BlockingReferenceHolder<String>();
         final long  SLEEP_TIME=2L * Byte.MAX_VALUE, WAIT_TIME=2L * SLEEP_TIME;
         final Runnable  provider=new Runnable() {
@@ -113,7 +113,7 @@ public class BlockingReferenceHolderTest extends AbstractTestSupport {
             };
         List<Thread>    threadList=new ArrayList<Thread>(NUM_THREADS);
         for (int index=1; index <= NUM_THREADS; index++) {
-            Thread  thread=new Thread(consumer, "testMultithreadedWaitForValue-" + index);
+            Thread  thread=new Thread(consumer, getCurrentTestName() + "-" + index);
             thread.start();
             threadList.add(thread);
         }

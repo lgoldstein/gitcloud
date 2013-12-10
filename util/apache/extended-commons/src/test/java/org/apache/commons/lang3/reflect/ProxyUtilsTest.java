@@ -38,7 +38,7 @@ public class ProxyUtilsTest extends AbstractTestSupport {
 
     @Test
     public void testNewProxyInstance () throws Exception {
-        final String    TEST_DATA="testNewProxyInstance";
+        final String    TEST_DATA=getCurrentTestName();
         StringBuilder   sb=new StringBuilder();
         Appendable      result=ProxyUtils.newProxyInstance(Appendable.class, createDelegatingInvocationHandler(sb), Appendable.class);
         // this must be false since we only specified Appendable as the proxy interface
@@ -79,14 +79,14 @@ public class ProxyUtilsTest extends AbstractTestSupport {
         }
         
         try {
-            result.append("testUnimplementedHandler");
+            result.append(getCurrentTestName());
             fail("Unexpected full sequence append success");
         } catch(UnsupportedOperationException e) {
             // expected - ignored
         }
 
         try {
-            result.append("testUnimplementedHandler", 0, 1);
+            result.append(TEST_NAME_HOLDER.getMethodName(), 0, 1);
             fail("Unexpected partial sequence append success");
         } catch(UnsupportedOperationException e) {
             // expected - ignored

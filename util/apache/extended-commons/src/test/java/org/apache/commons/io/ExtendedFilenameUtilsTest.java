@@ -62,7 +62,7 @@ public class ExtendedFilenameUtilsTest extends AbstractTestSupport {
         final String    tsValue=ExtendedFilenameUtils.FILENAME_TIMESTAMP_FORMAT.format(now.getTime());
         final Calendar  work=Calendar.getInstance();
         for (String prefix : new String[] { null, "", getClass().getSimpleName() }) {
-            for (String suffix : new String[] { null, "", "testGenerateTimestampedName" }) {
+            for (String suffix : new String[] { null, "", getCurrentTestName() }) {
                 String  expected=StringUtils.trimToEmpty(prefix) + tsValue + StringUtils.trimToEmpty(suffix);
                 String  actual=ExtendedFilenameUtils.generateTimestampedName(prefix, now, suffix);
                 assertEquals("Mismatched name result", expected, actual);
@@ -83,7 +83,7 @@ public class ExtendedFilenameUtilsTest extends AbstractTestSupport {
 
     @Test
     public void testParseTimestampedNameOnNonMatchingData() {
-        final String    prefix=getClass().getSimpleName(), suffix="testParseTimestampedNameOnNonMatchingData";
+        final String    prefix=getClass().getSimpleName(), suffix=getCurrentTestName();
         for (String name : new String[] { null, "", prefix, suffix, prefix + suffix, prefix + "xxx", "xxx" + suffix}) {
             assertNull("Unexpected result for " + name, ExtendedFilenameUtils.parseTimestampedName(name, prefix, suffix));
         }

@@ -52,6 +52,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Before;
 import org.junit.ExtendedAssert;
+import org.junit.Rule;
+import org.junit.rules.TestName;
 
 /**
  * Serves as a useful base class for jUnit tests
@@ -59,6 +61,7 @@ import org.junit.ExtendedAssert;
  */
 public abstract class AbstractTestSupport extends ExtendedAssert {
 	public static final String TEMP_SUBFOLDER_NAME="temp";
+	@Rule public final TestName TEST_NAME_HOLDER=new TestName();
 
 	protected final Log	logger;
 	private File	targetFolder;
@@ -66,6 +69,10 @@ public abstract class AbstractTestSupport extends ExtendedAssert {
 
 	protected AbstractTestSupport() {
 		logger = LogFactory.getLog(getClass());
+	}
+
+	public final String getCurrentTestName() {
+	    return TEST_NAME_HOLDER.getMethodName();
 	}
 
 	@Before

@@ -174,6 +174,37 @@ public class ExtendedBeanUtilsTest extends AbstractTestSupport {
         assertEquals("Mismatched dirty values map re-constructed bean", expected, actual);
     }
 
+    @Test
+    public void testIsGetterName() {
+        Method[]    ma=DummyBean.class.getMethods();
+        for (Method m : ma) {
+            String  name=m.getName();
+            if (ExtendedBeanUtils.isGetter(m)) {
+                assertTrue(name + ": not a getter name", ExtendedBeanUtils.isGetterName(name));
+                
+                Class<?>    attrType=m.getReturnType();
+                if (Boolean.TYPE.isAssignableFrom(attrType)) {
+                    assertTrue(name + ": not a boolean getter", ExtendedBeanUtils.isBooleanGetterName(name));
+                    assertFalse(name + ": unexpected value getter", ExtendedBeanUtils.isValueGetterName(name));
+                } else {
+                    assertTrue(name + ": not a value getter", ExtendedBeanUtils.isValueGetterName(name));
+                    assertFalse(name + ": unexpected boolean getter", ExtendedBeanUtils.isBooleanGetterName(name));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testIsSetterName() {
+        Method[]    ma=DummyBean.class.getMethods();
+        for (Method m : ma) {
+            String  name=m.getName();
+            if (ExtendedBeanUtils.isSetter(m)) {
+                assertTrue(name + ": not a setter name", ExtendedBeanUtils.isSetterName(name));
+            }
+        }
+    }
+
     private static SortedMap<String,Pair<Method,Method>> introspectTestInterfaces() {
         try {
             Map<String,Pair<Method,Method>> gettersMap=ExtendedBeanUtils.describeBean(Introspector.getBeanInfo(GetterInterface.class));
@@ -267,6 +298,7 @@ public class ExtendedBeanUtilsTest extends AbstractTestSupport {
         private String  stringValue;
         private long longValue;
         private Date dateValue;
+        private boolean boolValue;
 
         public DummyBean() {
             super();
@@ -289,6 +321,12 @@ public class ExtendedBeanUtilsTest extends AbstractTestSupport {
         }
         public void setLongValue(long v) {
             this.longValue = v;
+        }
+        public boolean isBoolValue() {
+            return boolValue;
+        }
+        public void setBoolValue(boolean v) {
+            this.boolValue = v;
         }
     }
 }

@@ -32,7 +32,6 @@ import org.junit.runners.MethodSorters;
 /**
  * @author Lyor G.
  * @since Jun 30, 2013 3:01:39 PM
- *
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class TupleUtilsTest extends AbstractTestSupport {

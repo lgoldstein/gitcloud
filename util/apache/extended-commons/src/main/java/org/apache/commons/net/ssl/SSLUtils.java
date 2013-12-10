@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.Reader;
 import java.io.StreamCorruptedException;
 import java.io.Writer;
 import java.net.URL;
@@ -46,6 +47,7 @@ import org.apache.commons.collections15.AbstractExtendedFactory;
 import org.apache.commons.collections15.ExtendedFactory;
 import org.apache.commons.io.ExtendedIOUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.input.CloseShieldReader;
 import org.apache.commons.io.input.ExtendedCloseShieldInputStream;
 import org.apache.commons.io.output.ExposedBufferOutputStream;
 
@@ -135,19 +137,26 @@ public class SSLUtils {
     }
 
     public static final X509Certificate readX509Certificate(File file) throws IOException {
-        BufferedReader  rdr=new BufferedReader(new FileReader(file));
+        Reader  rdr=new FileReader(file);
         try {
-            return readX509Certificate(rdr);
+            return readX509Certificate(rdr, true);
         } finally {
             rdr.close();
         }
     }
 
     public static final X509Certificate readX509Certificate(InputStream inStream, boolean okToClose) throws IOException {
+        Reader  rdr=new InputStreamReader(ExtendedCloseShieldInputStream.resolveInputStream(inStream, okToClose));
+        try {
+            return readX509Certificate(rdr, true);
+        } finally {
+            rdr.close();
+        }
+    }
+
+    public static final X509Certificate readX509Certificate(Reader r, boolean okToClose) throws IOException {
         BufferedReader  rdr=
-                new BufferedReader(
-                        new InputStreamReader(
-                                ExtendedCloseShieldInputStream.resolveInputStream(inStream, okToClose)));
+                new BufferedReader(CloseShieldReader.resolveReader(r, okToClose));
         try {
             return readX509Certificate(rdr);
         } finally {

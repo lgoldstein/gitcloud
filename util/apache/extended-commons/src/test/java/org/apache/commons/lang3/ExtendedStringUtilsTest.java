@@ -46,7 +46,7 @@ public class ExtendedStringUtilsTest extends AbstractTestSupport {
 
     @Test
     public void testSafeToString () {
-        final String    TEST_NAME="testSafeToString";
+        final String    TEST_NAME=getCurrentTestName();
         assertNull("Non null result", ExtendedStringUtils.safeToString(null));
         assertSame("Mismatched string result", TEST_NAME, ExtendedStringUtils.safeToString(TEST_NAME));
         assertEquals("Mismatched builder result", TEST_NAME, ExtendedStringUtils.safeToString(new StringBuilder(TEST_NAME)));
@@ -168,7 +168,7 @@ public class ExtendedStringUtilsTest extends AbstractTestSupport {
 	          {   "abcd", "abc",  Integer.valueOf(0), Integer.valueOf(4), Integer.valueOf(3) },
 	        };
         for (Object[] input : srcArray) {
-            assertEquals(MessageFormat.format("testFindFirstNonMatchingCharacter({0},{1}) start={2}, len={3}", input),
+            assertEquals(MessageFormat.format(getCurrentTestName() + "({0},{1}) start={2}, len={3}", input),
             			 ((Number) input[4]).intValue(),
             			 ExtendedStringUtils.findFirstNonMatchingCharacterIndex((CharSequence) input[0], (CharSequence)input[1],
             					 								  ((Number) input[2]).intValue(), ((Number) input[3]).intValue()));
@@ -176,13 +176,11 @@ public class ExtendedStringUtilsTest extends AbstractTestSupport {
     }
 
 	@Test
-	public void testStringTrimToSize ()
-	{
-		final String	TEST_STRING="testStringTrimToSize";
+	public void testStringTrimToSize () {
+		final String	TEST_STRING=getCurrentTestName();
 		assertSame("Not same string instance", TEST_STRING, ExtendedStringUtils.trimToSize(TEST_STRING, TEST_STRING.length() + 1));
 
-		for (int	length=0; length < TEST_STRING.length(); length++)
-		{
+		for (int	length=0; length < TEST_STRING.length(); length++) {
 			final String	expected=TEST_STRING.substring(0, length),
 							actual=ExtendedStringUtils.trimToSize(TEST_STRING, length);
 			assertNotSame("Same instance for length=" + length, expected, actual);
