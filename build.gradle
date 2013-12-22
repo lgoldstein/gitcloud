@@ -3,7 +3,7 @@ apply from: "$rootDir/common.gradle"
    
 allprojects {
     apply plugin: 'java'
-
+	compileJava.options.encoding = 'UTF-8'
 	version = '1.0.0-CI-SNAPSHOT'
 	sourceCompatibility = "${javacSourceVersion}"
 	targetCompatibility = "${javacTargetVersion}"
@@ -43,6 +43,8 @@ allprojects {
 	}
 
 	test {
+		testLogging.showStandardStreams = true
+
 		filter {
 			// only Test classes
 			includeTestsMatching "*Test"
