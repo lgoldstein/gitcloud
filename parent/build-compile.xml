@@ -1,10 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="compile-base" default="compile-base">
-	<description>
-    	Holds common imported definitions for ANT build.xml file(s)
-    	that build/generate artifacts
-    </description>
-
 	<dirname property="module.root.folder" file="${ant.file}" />
 	<property name="gitcloud.parent.folder" value="${module.root.folder}" />
 	<import file="${gitcloud.parent.folder}${file.separator}build-base.xml" />
@@ -23,68 +18,132 @@
 	</condition>
 
 	<property name="mvn.executable" value="${maven.install.location}${file.separator}bin${file.separator}${mvn.exe.script.name}" />
-	<property name="maven.settings.file.path" value="${gitcloud.parent.folder}${file.separator}${maven.settings.file.name}" />
-	<property name="maven.opts" value="-Xmx512m" />
+	<property name="maven.settings.file.path" value="${devenv.parent.folder}${file.separator}${maven.settings.file.name}" />
+	<property name="maven.opts" value="${buildrun.tool.options}" />
+	<property name="maven.opts.key.name" value="MAVEN_OPTS" />
 	<condition property="maven.local.repository.folder"
 		       value="${env.M2_REPO}"
 		       else="${user.home}${file.separator}${maven.repository.root.folder.name}${file.separator}${maven.repository.sub.folder.name}">
 		<isset property="env.M2_REPO" />
 	</condition>
+    <property name="maven.module.options" value="${buildrun.module.options}" />
+    <property name="maven.full.test.options" value="-Dmaven.test.haltafterfailure=true -Dmaven.test.failure.ignore=false -Dmaven.test.error.ignore=false" />
 
-	<!-- Procedure to execute the Maven script - SYNPOSIS:
+    <property name="maven.install.options" value="${maven.full.test.options} install" />
+    <property name="maven.clean.options" value="build-helper:remove-project-artifact -DremoveAll=true clean" />
 
-			<antcall target='run-mvn'>
-				<param name='mvn.run.dir' value='wwww' />
-				<param name='mvn.run.opts' value='xxxxxx'/>
-				<param name='mvn.arg.line' value='yyyyy'/>
+        <!-- ++++++++++++ Gradle related properties definitions +++++++++++++ -->
+    <property name="gradle.base.name" value="gradle" />
+    <property name="gradle.install.location" value="${env.GRADLE_HOME}" />
+    <condition property="gradle.exe.script.name" value="gradle.bat" else="gradle">
+        <istrue value="${win32.local.shell}" />
+    </condition>
+    <property name="gradle.executable" value="${gradle.install.location}${file.separator}bin${file.separator}${gradle.exe.script.name}" />
+    <property name="gradle.module.options" value="${buildrun.module.options}" />
+    <property name="gradle.opts" value="${buildrun.tool.options}" />
+    <property name="gradle.opts.key.name" value="GRADLE_OPTS" />
+
+    <property name="gradle.install.options" value="build" />
+    <property name="gradle.clean.options" value="clean" />
+
+	   <!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+    <condition property="build.run.executable" value="${mvn.executable}">
+        <equals arg1="${module.build.mode}" arg2="maven" casesensitive="false" forcestring="true" />
+    </condition>
+    <condition property="build.run.executable" value="${gradle.executable}">
+        <equals arg1="${module.build.mode}" arg2="gradle" casesensitive="false" forcestring="true" />
+    </condition>
+
+    <condition property="build.run.tool.name" value="${maven.base.name}">
+        <equals arg1="${module.build.mode}" arg2="maven" casesensitive="false" forcestring="true" />
+    </condition>
+    <condition property="build.run.tool.name" value="${gradle.base.name}">
+        <equals arg1="${module.build.mode}" arg2="gradle" casesensitive="false" forcestring="true" />
+    </condition>
+
+    <condition property="build.run.envvar.name" value="M2_HOME">
+        <equals arg1="${module.build.mode}" arg2="maven" casesensitive="false" forcestring="true" />
+    </condition>
+    <condition property="build.run.envvar.name" value="GRADLE_HOME">
+        <equals arg1="${module.build.mode}" arg2="gradle" casesensitive="false" forcestring="true" />
+    </condition>
+
+    <condition property="build.run.optskey.name" value="${maven.opts.key.name}">
+        <equals arg1="${module.build.mode}" arg2="maven" casesensitive="false" forcestring="true" />
+    </condition>
+    <condition property="build.run.optskey.name" value="${gradle.opts.key.name}">
+        <equals arg1="${module.build.mode}" arg2="gradle" casesensitive="false" forcestring="true" />
+    </condition>
+
+	<!-- Procedure to execute the build script - SYNPOSIS:
+
+			<antcall target='run-build'>
+				<param name='build.run.dir' value='wwww' />
+				<param name='build.run.opts' value='xxxxxx'/>
+				<param name='build.arg.line' value='yyyyy'/>
 			</antcall>
 			
 			Where:
 			
-				mvn.run.dir - folder to be used as CWD when running the script
-				mvn.run.opts - options to be set to MAVEN_OPTS (e.g., -Xmx128)
-				mvn.arg.line - line to be passed as argument to the invocation
+				build.run.dir - folder to be used as CWD when running the script
+				build.run.opts - options to be set to MAVEN_OPTS (e.g., -Xmx128)
+				build.arg.line - line to be passed as argument to the invocation
 		-->
-	<target name="run-mvn">
-		<fail message="Cannot find ${mvn.executable} - check that M2_HOME environment variable set">
+	<target name="run-build">
+		<fail message="Cannot find ${build.run.executable} - check that ${build.run.envvar.name} environment variable set">
 			<condition>
 				<not>
-					<available file="${mvn.executable}" type="file" />
+					<available file="${build.run.executable}" type="file" />
 				</not>
 			</condition>
 		</fail>
 
-		<echo message="mvn ${mvn.arg.line}" level="info" />
-		<exec executable="${mvn.executable}" failonerror="true" dir="${mvn.run.dir}">
-			<env key="MAVEN_OPTS" value="${mvn.run.opts}" />
-			<!-- arg line="-s ${maven.settings.file.path}" / -->
-			<arg line="${mvn.arg.line}" />
+		<echo message="${build.run.tool.name} ${build.arg.line}" level="info" />
+		<exec executable="${build.run.executable}" failonerror="true" dir="${build.run.dir}">
+			<env key="${build.run.optskey.name}" value="${build.run.opts}" />
+			<arg line="${build.arg.line}" />
 		</exec>
 	</target>
 
-	<property name="maven.module.options" value="-Xmx728m -XX:MaxPermSize=276m" />
-	<property name="maven.full.test.options" value="-Dmaven.test.haltafterfailure=true -Dmaven.test.failure.ignore=false -Dmaven.test.error.ignore=false" />
+    <condition property="build.run.opts.value" value="${maven.module.options}">
+        <equals arg1="${module.build.mode}" arg2="maven" casesensitive="false" forcestring="true" />
+    </condition>
+    <condition property="build.run.opts.value" value="${gradle.module.options}">
+        <equals arg1="${module.build.mode}" arg2="gradle" casesensitive="false" forcestring="true" />
+    </condition>
 
-	<property name="maven.install.options" value="${maven.full.test.options} install" />
-	<target name="run-module-mvn">
-		<antcall target='run-mvn'>
-			<param name='mvn.run.dir' value='${module.root.folder}' />
-			<param name='mvn.run.opts' value='${maven.module.options}'/>
-			<param name='mvn.arg.line' value='${maven.install.options}'/>
+    <condition property="build.run.buildargs.value" value="${maven.install.options}">
+        <equals arg1="${module.build.mode}" arg2="maven" casesensitive="false" forcestring="true" />
+    </condition>
+    <condition property="build.run.buildargs.value" value="${gradle.install.options}">
+        <equals arg1="${module.build.mode}" arg2="gradle" casesensitive="false" forcestring="true" />
+    </condition>
+
+	<target name="run-module-build">
+		<antcall target='run-build'>
+			<param name='build.run.dir' value='${module.root.folder}' />
+			<param name='build.run.opts' value='${build.run.opts.value}'/>
+			<param name='build.arg.line' value='${build.run.buildargs.value}'/>
 		</antcall>
 	</target>
 
-	<property name="maven.clean.options" value="build-helper:remove-project-artifact -DremoveAll=true clean" />
-	<target name="clean-module-mvn">
-		<antcall target='run-mvn'>
-			<param name='mvn.run.dir' value='${module.root.folder}' />
-			<param name='mvn.run.opts' value='${maven.module.options}'/>
-			<param name='mvn.arg.line' value='${maven.clean.options}'/>
+    <condition property="build.run.cleanargs.value" value="${maven.clean.options}">
+        <equals arg1="${module.build.mode}" arg2="maven" casesensitive="false" forcestring="true" />
+    </condition>
+    <condition property="build.run.cleanargs.value" value="${gradle.clean.options}">
+        <equals arg1="${module.build.mode}" arg2="gradle" casesensitive="false" forcestring="true" />
+    </condition>
+
+	<target name="clean-module-build">
+		<antcall target='run-build'>
+			<param name='build.run.dir' value='${module.root.folder}' />
+			<param name='build.run.opts' value='${build.run.opts.value}'/>
+			<param name='build.arg.line' value='${build.run.cleanargs.value}'/>
 		</antcall>
 	</target>
 
 	<target name="compile-base" depends="workspace-base" />
-    <target name="compile" depends="run-module-mvn" description="Runs the mvn install command - including all the tests" />
-    <target name="uncompile" depends="clean-module-mvn" description="Runs the mvn clean command - including un-install the artifact from Maven local repository" />
+    <target name="compile" depends="run-module-build" description="Runs the mvn install command - including all the tests" />
+    <target name="uncompile" depends="clean-module-build" description="Runs the mvn clean command - including un-install the artifact from Maven local repository" />
     <target name="recompile" depends="uncompile,compile" description="Re-compiles the module" />
 </project>

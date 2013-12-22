@@ -8,30 +8,31 @@
 	<property name="gitcloud.parent.folder" value="${module.root.folder}" />
 	<import file="${gitcloud.parent.folder}${file.separator}build-install.xml" />
 
-	<!-- Helper ANT target that runs the Maven command using the root folder
+	
+	<!-- Helper ANT target that runs the build command using the root folder
 			and allowing to specify the extra options. Usage:
 			
-			<antcall target="run-full-mvn">
-				<param name="run.full.mvn.options" value="...whatever maven options" />
+			<antcall target="run-full-build">
+				<param name="run.full.build.options" value="...whatever maven options" />
 			</antcall>
 		-->
-	<target name="run-full-mvn" depends="compile-base">
-		<antcall target="run-mvn">
-			<param name="mvn.run.dir" value="${gitcloud.root.folder}" />
-			<param name="mvn.run.opts" value="${maven.module.options}"/>
-			<param name="mvn.arg.line" value="${run.full.mvn.options}"/>
+	<target name="run-full-build" depends="compile-base">
+		<antcall target="run-build">
+			<param name="build.run.dir" value="${gitcloud.root.folder}" />
+			<param name="build.run.opts" value="${build.run.opts.value}"/>
+			<param name="build.arg.line" value="${run.full.build.options}"/>
 		</antcall>
 	</target>
 
 	<target name="install" description="Runs the mvn install command - including all the tests">
-		<antcall target="run-full-mvn">
-			<param name="run.full.mvn.options" value="${maven.full.test.options} install"/>
+		<antcall target="run-full-build">
+			<param name="run.full.build.options" value="${build.run.buildargs.value}"/>
 		</antcall>
 	</target>
 
 	<target name="clean" description="Runs the mvn clean command + removes the generated artifacts">
-		<antcall target="run-full-mvn">
-			<param name="run.full.mvn.options" value="build-helper:remove-project-artifact -DremoveAll=true clean"/>
+		<antcall target="run-full-build">
+			<param name="run.full.build.options" value="${build.run.cleanargs.value}"/>
 		</antcall>
 	</target>
 
