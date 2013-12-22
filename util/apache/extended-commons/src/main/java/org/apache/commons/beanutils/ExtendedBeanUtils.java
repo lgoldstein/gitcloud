@@ -725,7 +725,7 @@ public class ExtendedBeanUtils {
      *      Return type is <code>void</code> (<B>Note:</B> {@link Void} wrapper
      *      is <U>not</U> considered a valid return type)
      *      </LI>
-     * </UL
+     * </UL>
      */
     public static final boolean isSetter(Method m) {
         if (m == null) {

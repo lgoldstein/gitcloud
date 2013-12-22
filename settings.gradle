@@ -3,6 +3,9 @@ include 'util:apache:sshd-extensions'
 include 'util:spring:extended-core'
 include 'util:spring:jdbc-extensions'
 include 'core:api'
+include 'facades:common'
+include 'facades:front-end:web'
+include 'facades:back-end'
 
 rootProject.name = 'aas'
 

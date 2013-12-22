@@ -1,0 +1,39 @@
+apply plugin: 'war'
+
+configurations {
+    // log4j pulls these in, but we don't want them
+    compile.exclude group: 'ant', module: 'ant-nodeps'
+    compile.exclude group: 'ant', module: 'ant-junit'
+    compile.exclude group: 'ant', module: 'ant-contrib'
+    
+    // jsp-api pulls this in and we provide an alternative
+    compile.exclude group: 'javax.servlet', module: 'servlet-api'
+    
+    extraWebInfLibs     // for the artifacts
+}
+
+dependencies {
+    compile depsMgmt.httpclient
+    compile depsMgmt.httpcore
+    compile depsMgmt.httpmime
+    compile depsMgmt.hibernate_validator
+    
+    compile depsMgmt.spring_security_core
+
+    compile (
+            [ group: 'jstl', name: 'jstl', version: '1.2' ]
+        )
+
+    providedCompile depsMgmt.servlet_api
+
+    extraWebInfLibs (   // this ensure the downloading
+            depsMgmt.log4j,
+            depsMgmt.slf4j_log4j12
+        )
+
+}
+
+war {
+    classpath configurations.extraWebInfLibs // adds a configuration to the WEB-INF/lib dir
+    classpath = filterDuplicateFiles(classpath)     // must be last classpath statement
+}

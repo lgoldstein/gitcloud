@@ -1,0 +1,19 @@
+subprojects {
+	dependencies {
+		compile project(':gitcloud-util:gitcloud-apache:gitcloud-extended-commons')
+		compile project(':gitcloud-util:gitcloud-spring:gitcloud-extended-core')
+		
+	    compile depsMgmt.validation_api
+		compile depsMgmt.servlet_api
+
+		compile depsMgmt.spring_oxm
+		compile depsMgmt.spring_webmvc
+
+		compile depsMgmt.jgit_core
+		compile depsMgmt.jgit_http
+
+		testCompile project(path: ':gitcloud-util:gitcloud-apache:gitcloud-extended-commons', configuration: 'testFixtures')
+		testCompile project(path: ':gitcloud-util:gitcloud-spring:gitcloud-extended-core', configuration: 'testFixtures')
+		testCompile depsMgmt.spring_test
+	}
+}
