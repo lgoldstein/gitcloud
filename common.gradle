@@ -14,7 +14,7 @@ ext.verMgmt=[
 	jacksonVersion:	'2.3.0',
 	//ext.jetty.version="6.1.26"
 	apacheHttpVersion:	'4.2.3',
-	vcloudSdkVersion:	'5.1',
+    jgitVersion:	'3.0.0.201306101825-r',
 
 	//ext.eclipse.persistence.version="2.3.2"
 	springFrameworkVersion:		'4.0.0.RELEASE',
@@ -48,8 +48,6 @@ ext.verMgmt=[
 ext.javacSourceVersion="${verMgmt.jvmMajorVersion}.${verMgmt.jvmMinorVersion}"
 ext.javacTargetVersion="${javacSourceVersion}"
 
-ext.vcloudLibJarsSdkVersion="${verMgmt.vcloudSdkVersion}.0"
-
 // general dependencies management
 ext.depsMgmt=[
 	commons_lang_3: 		[ group: 'org.apache.commons', name: 'commons-lang3', version: '3.1' ],
@@ -73,6 +71,9 @@ ext.depsMgmt=[
 
 	mina_core:				[ group: 'org.apache.mina', name: 'mina-core', version: '2.0.7' ],
 	sshd_core:				[ group: 'org.apache.sshd', name: 'sshd-core', version: '0.9.0' ],
+
+	jgit_core:				[ group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: "${verMgmt.jgitVersion}" ],	// FIXME exclude com.jcraft:jsch, com.googlecode.javaewah:JavaEWAH
+	jgit_http:				[ group: 'org.eclipse.jgit', name: 'org.eclipse.jgit.http.server', version: "${verMgmt.jgitVersion}" ],
 
 	slf4j_api:				[ group: 'org.slf4j', name: 'slf4j-api', version: "${verMgmt.slf4jVersion}" ],
 	slf4j_log4j12:			[ group: 'org.slf4j', name: 'slf4j-log4j12', version: "${verMgmt.slf4jVersion}" ],

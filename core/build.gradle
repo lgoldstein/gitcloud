@@ -1,0 +1,12 @@
+
+subprojects {
+	dependencies {
+		compile project(':gitcloud-util:gitcloud-apache:gitcloud-extended-commons')
+		compile project(':gitcloud-util:gitcloud-spring:gitcloud-extended-core')
+		compile depsMgmt.jgit_core
+
+		testCompile project(path: ':gitcloud-util:gitcloud-apache:gitcloud-extended-commons', configuration: 'testFixtures')
+		testCompile project(path: ':gitcloud-util:gitcloud-spring:gitcloud-extended-core', configuration: 'testFixtures')
+		testCompile depsMgmt.spring_test
+	}
+}
