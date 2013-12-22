@@ -6,7 +6,6 @@ ext.verMgmt=[
 	// expected JVM versions
 	jvmMajorVersion:	'1',
 	jvmMinorVersion:	'7',
-	//ext.excluded.tests.group="org.apache.commons.test.MicroBenchmark"
 
 	// some repeated versions
 	//ext.surefire.plugin.version="2.16"
@@ -45,8 +44,15 @@ ext.verMgmt=[
  * 'verMgmt' definition
  */
 // compilation source/target version(s)
-ext.javacSourceVersion="${verMgmt.jvmMajorVersion}.${verMgmt.jvmMinorVersion}"
-ext.javacTargetVersion="${javacSourceVersion}"
+verMgmt+=[
+	javacSourceVersion:	"${verMgmt.jvmMajorVersion}.${verMgmt.jvmMinorVersion}"
+ ]
+ 
+verMgmt+=[
+	javacTargetVersion:	"${verMgmt.javacSourceVersion}"
+]
+
+ext.excludedTestsGroup='org.apache.commons.test.MicroBenchmark'
 
 // general dependencies management
 ext.depsMgmt=[

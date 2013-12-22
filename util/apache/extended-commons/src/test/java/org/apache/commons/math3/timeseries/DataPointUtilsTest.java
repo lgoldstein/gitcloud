@@ -24,8 +24,10 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.test.AbstractTestSupport;
+import org.apache.commons.test.MicroBenchmark;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runners.MethodSorters;
 
 /**
@@ -139,6 +141,7 @@ public class DataPointUtilsTest extends AbstractTestSupport {
     }
     
     @Test
+    @Category(MicroBenchmark.class)
     public void testResampleByBuckets() {
         testResamplePolicy(new Resampler() {
             @Override
@@ -149,6 +152,7 @@ public class DataPointUtilsTest extends AbstractTestSupport {
     }
 
     @Test
+    @Category(MicroBenchmark.class)
     public void testLargestTriangleThreeBucketsDownsample() {
         testResamplePolicy(new Resampler() {
             @Override
