@@ -1,0 +1,27 @@
+task testsFilteredJar(type: Jar, dependsOn: test) {
+    // pack whatever you need...
+    classifier = 'tests'
+    from sourceSets.test.output
+    include 'org/springframework/test/**/*'
+}
+
+task testsSourcesFilteredJar(type: Jar, dependsOn: test) {
+    // pack whatever you need...
+    classifier = 'test-sources'
+    from sourceSets.test.allSource
+    include 'org/springframework/test/**/*'
+}
+
+configurations {
+    testFixtures {
+         extendsFrom testCompile
+    }
+}
+
+artifacts {
+    testFixtures  testsFilteredJar
+    archives sourcesJar
+    archives javadocJar
+    archives testsFilteredJar
+    archives testsSourcesFilteredJar
+}

@@ -31,6 +31,7 @@ import java.io.StreamCorruptedException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -244,20 +245,28 @@ public abstract class AbstractTestSupport extends ExtendedAssert {
     	return detectTargetFolder(ExtendedClassUtils.getClassContainerLocationFile(anchor));
     }
     
+    public static final List<String>    TARGET_FOLDER_NAMES=    // NOTE: order is important
+            Collections.unmodifiableList(Arrays.asList("target" /* Maven */, "build" /* Gradle */));
+
     /**
      * @param anchorFile An anchor {@link File} we want to use
-     * as the starting point for the &quot;target&quot; folder lookup up the
-     * hierarchy
+     * as the starting point for the &quot;target&quot; or &quot;build&quot; folder
+     * lookup up the hierarchy
      * @return The &quot;target&quot; <U>folder</U> - <code>null</code> if not found
      */
     public static final File detectTargetFolder (File anchorFile) {
-    	for (File	file=anchorFile; file != null; file=file.getParentFile()) {
-    		if ("target".equals(file.getName()) && file.isDirectory()) {
-    			return file;
-    		}
-    	}
+        for (File   file=anchorFile; file != null; file=file.getParentFile()) {
+            if (!file.isDirectory()) {
+                continue;
+            }
+            
+            String name=file.getName();
+            if (TARGET_FOLDER_NAMES.contains(name)) {
+                return file;
+            }
+        }
 
-    	return null;
+        return null;
     }
 
     protected File createTempFile (final String prefix, final String suffix) throws IOException {

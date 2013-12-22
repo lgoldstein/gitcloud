@@ -1,0 +1,90 @@
+
+apply from: "$rootDir/common.gradle"
+   
+allprojects {
+    apply plugin: 'java'
+
+	version = '1.0.0-CI-SNAPSHOT'
+	sourceCompatibility = "${javacSourceVersion}"
+	targetCompatibility = "${javacTargetVersion}"
+ 
+    repositories {
+        mavenCentral()
+    }
+
+	configurations {
+		// spring pulls commons-logging but we're using an slf4j bridge
+		compile.exclude group: 'commons-logging', module: 'commons-logging'
+		// some older artifacts still declare this dependency which is now provided by the J2SE
+		compile.exclude group: 'xml-apis', module: 'xml-apis'
+	}
+
+    dependencies {
+		compile(
+			[ group: 'org.slf4j', name: 'jcl-over-slf4j', version: "${verMgmt.slf4jVersion}" ]
+		)
+
+        testCompile depsMgmt.junit
+        testCompile depsMgmt.mockito
+		
+		testRuntime depsMgmt.slf4j_simple
+    }
+ 
+	jar {
+		manifest {
+			attributes(
+			    'Java-Version': 			System.properties['java.version'],
+                'Java-VM-Version': 			System.properties['java.vm.version'],
+                'User-Name':				System.properties['user.name'],
+				'Release-Timestamp':		"${timestampValue}",
+				'Implementation-Version':	version
+			)
+		}
+	}
+
+	test {
+		filter {
+			// only Test classes
+			includeTestsMatching "*Test"
+		}
+	}
+
+	// some useful extra tasks that emulate the Maven
+	task sourcesJar(type: Jar, dependsOn: classes) {
+		classifier = 'sources'
+		from sourceSets.main.allSource
+	}
+
+	task javadocJar(type: Jar, dependsOn: javadoc) {
+		classifier = 'javadoc'
+		from javadoc.destinationDir
+	}
+
+	// add testCompile project(path: ':ProjectA', configuration: 'testArtifacts') in projectB
+	task testsJar(type: Jar, dependsOn: test) { 
+		// pack whatever you need...
+		classifier = 'tests'
+		from sourceSets.test.output
+	}
+
+	task testsSourcesJar(type: Jar, dependsOn: test) { 
+		// pack whatever you need...
+		classifier = 'test-sources'
+		from sourceSets.test.allSource
+	}
+}
+
+// see http://issues.gradle.org/browse/GRADLE-1454
+def filterDuplicateFiles(originalClasspath) {
+	def uniqueNames = [] as Set
+	def filesList = []
+	originalClasspath.each { input -> 
+		if (uniqueNames.contains(input.name)) { 
+			logger.warn("Filter duplicate file: ${input.name}")
+		} else {
+			filesList << input
+		}
+	} 
+	return filesList
+}
+

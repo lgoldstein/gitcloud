@@ -1,8 +1,10 @@
 .DS_Store
 target
+build
 _ajdump
 Servers
 .metadata
+.gradle
 .settings
 .project
 .classpath

@@ -1,0 +1,41 @@
+dependencies {
+	compile project(':gitcloud-util:gitcloud-spring:gitcloud-extended-core')
+    compile depsMgmt.spring_jdbc
+    compile depsMgmt.spring_orm
+    compile depsMgmt.spring_tx
+    compile depsMgmt.validation_api
+    
+	testCompile project(path: ':gitcloud-util:gitcloud-spring:gitcloud-extended-core', configuration: 'testFixtures')
+    testCompile depsMgmt.commons_dbcp
+    testCompile depsMgmt.commons_pool
+    testCompile depsMgmt.hsqldb
+}
+
+
+task testsFilteredJar(type: Jar, dependsOn: test) {
+    // pack whatever you need...
+    classifier = 'tests'
+    from sourceSets.test.output
+    include 'org/springframework/jdbc/test/**/*'
+}
+
+task testsSourcesFilteredJar(type: Jar, dependsOn: test) {
+    // pack whatever you need...
+    classifier = 'test-sources'
+    from sourceSets.test.allSource
+    include 'org/springframework/jdbc/test/**/*'
+}
+
+configurations {
+    testFixtures {
+         extendsFrom testCompile
+    }
+}
+
+artifacts {
+    testFixtures  testsFilteredJar
+    archives sourcesJar
+    archives javadocJar
+    archives testsFilteredJar
+    archives testsSourcesFilteredJar
+}

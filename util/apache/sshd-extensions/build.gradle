@@ -1,0 +1,7 @@
+dependencies {
+	compile project(':gitcloud-util:gitcloud-apache:gitcloud-extended-commons')
+    compile depsMgmt.mina_core
+    compile depsMgmt.sshd_core
+    
+	testCompile project(path: ':gitcloud-util:gitcloud-apache:gitcloud-extended-commons', configuration: 'testFixtures')
+}

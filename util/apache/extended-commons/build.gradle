@@ -1,0 +1,39 @@
+dependencies {
+	compile depsMgmt.commons_lang_3
+	compile depsMgmt.collections_generic
+	compile depsMgmt.commons_io
+	compile depsMgmt.commons_cli
+	compile depsMgmt.commons_codec
+	compile depsMgmt.commons_math3
+	compile depsMgmt.commons_net
+}
+
+task testsFilteredJar(type: Jar, dependsOn: test) { 
+	// pack whatever you need...
+	classifier = 'tests'
+	from sourceSets.test.output
+	include 'org/junit/**/*'
+	include 'org/apache/commons/test/**/*'
+}
+
+task testsSourcesFilteredJar(type: Jar, dependsOn: test) { 
+	// pack whatever you need...
+	classifier = 'test-sources'
+	from sourceSets.test.allSource
+	include 'org/junit/**/*'
+	include 'org/apache/commons/test/**/*'
+}
+
+configurations {
+	testFixtures { 
+         extendsFrom testCompile 
+    }
+}
+
+artifacts {
+	testFixtures  testsFilteredJar
+	archives sourcesJar
+	archives javadocJar
+	archives testsFilteredJar
+	archives testsSourcesFilteredJar
+}

@@ -1,0 +1,13 @@
+include 'util:apache:extended-commons'
+include 'util:apache:sshd-extensions'
+include 'util:spring:extended-core'
+include 'util:spring:jdbc-extensions'
+
+rootProject.name = 'aas'
+
+prefixProjectName(rootProject, 'gitcloud-')
+
+def prefixProjectName(project, prefix) {
+  project.name = prefix + project.name
+  project.children.each { prefixProjectName(it, prefix) }
+}
