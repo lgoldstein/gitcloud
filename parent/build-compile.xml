@@ -4,6 +4,10 @@
 	<property name="gitcloud.parent.folder" value="${module.root.folder}" />
 	<import file="${gitcloud.parent.folder}${file.separator}build-base.xml" />
 
+       <!-- ++++++++++++ Tool build related properties definitions +++++++++++++ -->
+    <property name="buildrun.module.options" value="-Xmx728m -XX:MaxPermSize=276m" />
+    <property name="buildrun.tool.options" value="-Xmx512m" />
+
 		<!-- ++++++++++++ Maven related properties definitions +++++++++++++ -->
 	<property name="maven.base.name" value="maven" />
 	<property name="maven.archiver.sub.folder.name" value="${maven.base.name}-archiver" />
